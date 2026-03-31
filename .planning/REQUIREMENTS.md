@@ -34,6 +34,7 @@
 - [ ] **DNS-03**: DNS resolution has a 2-second timeout per lookup to prevent pipeline stall
 - [ ] **DNS-04**: Resolved IP→domain mappings are cached with TTL to avoid repeated lookups for the same destination
 - [ ] **DNS-05**: Unresolvable IPs fall back to displaying raw IP address
+- [ ] **DNS-06**: DNS cache is bounded to a maximum of 1000 entries with LRU eviction to prevent unbounded memory growth
 
 ### Detection
 
@@ -67,6 +68,23 @@
 - [ ] **API-09**: If a client cannot keep up, server drops older buffered updates rather than buffering indefinitely
 - [ ] **API-10**: API response and documentation explicitly note that byte counts are estimated from packet size, not full stream reconstruction
 
+### Pipeline Worker
+
+- [ ] **PIPE-01**: A dedicated async pipeline worker consumes packets from the queue and processes each event sequentially through: Analyzer → Process Mapper → DNS Resolver → Detection Engine → Storage → WebSocket push
+- [ ] **PIPE-02**: Pipeline worker preserves packet order — events are processed in the order they are dequeued
+- [ ] **PIPE-03**: Pipeline worker never blocks on DNS or process mapping — all blocking calls dispatched to thread pool executors
+
+### Performance
+
+- [ ] **PERF-01**: System sustains at least 500 packets/sec with fewer than 5% packet drop under load
+- [ ] **PERF-02**: End-to-end latency from packet capture to UI display is less than 1 second under normal traffic
+
+### Testing & Observability
+
+- [ ] **TEST-01**: Debug mode (enabled via config.yaml flag) prints each enriched pipeline event to console for validation during development
+- [ ] **TEST-02**: Synthetic traffic generator script produces rapid HTTP requests to simulate load for testing PERF-01/02
+- [ ] **MET-01**: System logs packets/sec, dropped packet count, and active connection count every 5 seconds at INFO level
+
 ### Configuration
 
 - [ ] **CONFIG-01**: All thresholds and runtime settings stored in `config.yaml` (queue size, polling interval, alert rate limit, port allowlist, log rotation size)
@@ -87,6 +105,7 @@
 - [ ] **UI-05**: Capture status indicator showing whether sniffing is active
 - [ ] **UI-06**: Frontend connects to WebSocket and updates table/charts on each batch push
 - [ ] **UI-07**: Frontend does not re-render the entire DOM on every update (only delta updates)
+- [ ] **UI-08**: Dashboard has a pause/resume toggle that halts live UI updates for inspection without disconnecting the WebSocket
 
 ## v2 Requirements
 
@@ -144,6 +163,15 @@
 | DNS-03 | Phase 3 | Pending |
 | DNS-04 | Phase 3 | Pending |
 | DNS-05 | Phase 3 | Pending |
+| DNS-06 | Phase 3 | Pending |
+| PIPE-01 | Phase 1 | Pending |
+| PIPE-02 | Phase 1 | Pending |
+| PIPE-03 | Phase 1 | Pending |
+| PERF-01 | Phase 5 | Pending |
+| PERF-02 | Phase 5 | Pending |
+| TEST-01 | Phase 1 | Pending |
+| TEST-02 | Phase 5 | Pending |
+| MET-01 | Phase 5 | Pending |
 | DET-01 | Phase 4 | Pending |
 | DET-02 | Phase 4 | Pending |
 | DET-03 | Phase 4 | Pending |
@@ -152,6 +180,7 @@
 | DET-06 | Phase 4 | Pending |
 | CONFIG-01 | Phase 1 | Pending |
 | CONFIG-02 | Phase 1 | Pending |
+| CONFIG-03 | Phase 1 | Pending |
 | SYS-01 | Phase 1 | Pending |
 | SYS-02 | Phase 5 | Pending |
 | STORE-01 | Phase 5 | Pending |
@@ -178,11 +207,13 @@
 | UI-05 | Phase 6 | Pending |
 | UI-06 | Phase 6 | Pending |
 | UI-07 | Phase 6 | Pending |
+| UI-08 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 55 total
-- Mapped to phases: 55
+- v1 requirements: 67 total
+- Mapped to phases: 67
 - Unmapped: 0 ✓
+- Note: CONFIG-03 and SYS-01 have identical text ("System logs all critical errors without terminating the main event loop") — both are mapped to Phase 1 and treated as the same implementation concern
 
 ## Data Model
 
@@ -225,4 +256,4 @@
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after user additions (PROC-05/06, CAP-06–10, DET-06, STORE-05–07, API-08–10, CONFIG, SYS)*
+*Last updated: 2026-03-31 — Roadmap created; CONFIG-03 added to traceability (was missing); coverage corrected to 56 requirements*
