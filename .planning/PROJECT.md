@@ -12,7 +12,13 @@ Users can see exactly which apps are talking to the internet and get alerted whe
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Capture outgoing network packets in real-time using Scapy — Validated in Phase 01: Capture Foundation
+- [x] Scapy sniffer in daemon thread with drop-head asyncio queue bridge — Validated in Phase 01
+- [x] Interface auto-selection by traffic volume (psutil bytes_sent) — Validated in Phase 01
+- [x] Sniffer supervisor with exponential backoff restart — Validated in Phase 01
+- [x] Async pipeline worker consuming queue FIFO — Validated in Phase 01
+- [x] Admin + Npcap prerequisite gate at startup — Validated in Phase 01
+- [x] Config loader with YAML + defaults fallback — Validated in Phase 01
 
 ### Active
 
@@ -78,4 +84,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after initialization*
+*Last updated: 2026-04-01 after Phase 01 (Capture Foundation) completion*
