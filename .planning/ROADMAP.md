@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md — Windows prerequisites (Npcap check, admin check) and config.yaml loader with defaults
-- [ ] 01-02-PLAN.md — Scapy sniffer daemon thread, interface auto-selection, asyncio queue bridge with drop-head
+- [x] 01-02-PLAN.md — Scapy sniffer daemon thread, interface auto-selection, asyncio queue bridge with drop-head
 - [ ] 01-03-PLAN.md — Sniffer supervisor with exponential backoff restart, async pipeline worker, FastAPI lifespan
 
 ### Phase 2: Process Attribution
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Capture Foundation | 1/3 | In Progress|  |
+| 1. Capture Foundation | 2/3 | In Progress|  |
 | 2. Process Attribution | 0/2 | Not started | - |
 | 3. DNS Resolution | 0/2 | Not started | - |
 | 4. Detection Engine | 0/2 | Not started | - |

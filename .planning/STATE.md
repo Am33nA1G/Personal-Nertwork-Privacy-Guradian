@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md — prereqs.py, config.py, config.yaml, 8 tests GREEN
-last_updated: "2026-04-01T01:32:24.359Z"
+stopped_at: Completed 01-02-PLAN.md — queue_bridge.py, interface.py, sniffer.py, 8 tests GREEN
+last_updated: "2026-04-01T01:38:21.892Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 ## Current Position
 
 Phase: 01 (capture-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-01
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-capture-foundation P01 | 15 | 2 tasks | 11 files |
+| Phase 01-capture-foundation P02 | 138 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Recent decisions affecting current work:
 - [Phase 01-capture-foundation]: Npcap detection uses filesystem check (System32/Npcap dir) first, winreg as fallback — matches Scapy's own detection approach
 - [Phase 01-capture-foundation]: load_config() returns dict(DEFAULT_CONFIG) copy — never mutates defaults; invalid YAML returns all defaults without partial merge
 - [Phase 01-capture-foundation]: check_npcap() and check_admin() use sys.exit(1) directly — cold-start gate pattern with stderr error messages before any network activity
+- [Phase 01-capture-foundation]: Isolated Scapy import behind _get_scapy_ifaces() helper so tests can mock it without Npcap installed
+- [Phase 01-capture-foundation]: drop_counter as list[int] for mutable closure state in Python
+- [Phase 01-capture-foundation]: start_sniffer() is single-run only; supervisor coroutine (CAP-10) deferred to Plan 03
 
 ### Pending Todos
 
@@ -82,6 +86,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T01:32:24.355Z
-Stopped at: Completed 01-01-PLAN.md — prereqs.py, config.py, config.yaml, 8 tests GREEN
+Last session: 2026-04-01T01:38:21.887Z
+Stopped at: Completed 01-02-PLAN.md — queue_bridge.py, interface.py, sniffer.py, 8 tests GREEN
 Resume file: None

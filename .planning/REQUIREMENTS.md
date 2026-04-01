@@ -7,15 +7,15 @@
 
 ### Capture
 
-- [ ] **CAP-01**: System captures outgoing network packets in real-time using Scapy with `store=False` (no memory accumulation)
+- [x] **CAP-01**: System captures outgoing network packets in real-time using Scapy with `store=False` (no memory accumulation)
 - [x] **CAP-02**: System runs Npcap startup check and exits with a clear error message if Npcap is not installed
 - [x] **CAP-03**: System verifies it is running with administrator/root privileges on startup
-- [ ] **CAP-04**: System auto-selects the interface with highest outbound traffic if multiple interfaces are active
-- [ ] **CAP-05**: Packet sniffer runs in a dedicated daemon thread with a bounded asyncio queue (maxsize=500) bridging to FastAPI
-- [ ] **CAP-06**: When the packet queue reaches max capacity, system drops oldest packets (drop-head strategy) instead of blocking
-- [ ] **CAP-07**: System logs packet drops as INFO events for observability
-- [ ] **CAP-08**: Each event includes both wall-clock timestamp (ISO8601) and monotonic timestamp for accurate ordering
-- [ ] **CAP-09**: User can override interface selection via `config.yaml` or CLI flag
+- [x] **CAP-04**: System auto-selects the interface with highest outbound traffic if multiple interfaces are active
+- [x] **CAP-05**: Packet sniffer runs in a dedicated daemon thread with a bounded asyncio queue (maxsize=500) bridging to FastAPI
+- [x] **CAP-06**: When the packet queue reaches max capacity, system drops oldest packets (drop-head strategy) instead of blocking
+- [x] **CAP-07**: System logs packet drops as INFO events for observability
+- [x] **CAP-08**: Each event includes both wall-clock timestamp (ISO8601) and monotonic timestamp for accurate ordering
+- [x] **CAP-09**: User can override interface selection via `config.yaml` or CLI flag
 - [ ] **CAP-10**: Packet sniffer automatically restarts on failure with exponential backoff
 
 ### Process Attribution
@@ -81,7 +81,7 @@
 
 ### Testing & Observability
 
-- [ ] **TEST-01**: Debug mode (enabled via config.yaml flag) prints each enriched pipeline event to console for validation during development
+- [x] **TEST-01**: Debug mode (enabled via config.yaml flag) prints each enriched pipeline event to console for validation during development
 - [ ] **TEST-02**: Synthetic traffic generator script produces rapid HTTP requests to simulate load for testing PERF-01/02
 - [ ] **MET-01**: System logs packets/sec, dropped packet count, and active connection count every 5 seconds at INFO level
 
@@ -142,15 +142,15 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAP-01 | Phase 1 | Pending |
+| CAP-01 | Phase 1 | Complete |
 | CAP-02 | Phase 1 | Complete |
 | CAP-03 | Phase 1 | Complete |
-| CAP-04 | Phase 1 | Pending |
-| CAP-05 | Phase 1 | Pending |
-| CAP-06 | Phase 1 | Pending |
-| CAP-07 | Phase 1 | Pending |
-| CAP-08 | Phase 1 | Pending |
-| CAP-09 | Phase 1 | Pending |
+| CAP-04 | Phase 1 | Complete |
+| CAP-05 | Phase 1 | Complete |
+| CAP-06 | Phase 1 | Complete |
+| CAP-07 | Phase 1 | Complete |
+| CAP-08 | Phase 1 | Complete |
+| CAP-09 | Phase 1 | Complete |
 | CAP-10 | Phase 1 | Pending |
 | PROC-01 | Phase 2 | Pending |
 | PROC-02 | Phase 2 | Pending |
@@ -169,7 +169,7 @@
 | PIPE-03 | Phase 1 | Pending |
 | PERF-01 | Phase 5 | Pending |
 | PERF-02 | Phase 5 | Pending |
-| TEST-01 | Phase 1 | Pending |
+| TEST-01 | Phase 1 | Complete |
 | TEST-02 | Phase 5 | Pending |
 | MET-01 | Phase 5 | Pending |
 | DET-01 | Phase 4 | Pending |
