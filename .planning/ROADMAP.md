@@ -31,12 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Packets are visible in the async queue within 5 seconds of startup on the correct network interface (auto-selected or overridden via config.yaml or CLI flag)
   4. When the queue hits maxsize=500, the oldest packet is dropped and an INFO log entry is emitted — the sniffer does not block or crash
   5. If the sniffer thread dies, it restarts automatically with exponential backoff and logs each restart attempt
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Windows prerequisites and config.yaml loader (Npcap check, privilege check, config validation with defaults; startup sequence: load config → verify Npcap → verify admin → select interface)
-- [ ] 01-02: Scapy sniffer daemon thread, interface auto-selection, asyncio queue bridge, and debug mode console logging (TEST-01)
-- [ ] 01-03: Queue backpressure (drop-head strategy), packet drop logging, sniffer auto-restart with backoff, and async pipeline worker (PIPE-01/02/03: consumes queue, routes through enrichment → detection → storage → WebSocket)
+- [x] 01-01-PLAN.md — Windows prerequisites (Npcap check, admin check) and config.yaml loader with defaults
+- [ ] 01-02-PLAN.md — Scapy sniffer daemon thread, interface auto-selection, asyncio queue bridge with drop-head
+- [ ] 01-03-PLAN.md — Sniffer supervisor with exponential backoff restart, async pipeline worker, FastAPI lifespan
 
 ### Phase 2: Process Attribution
 **Goal**: Every packet event in the queue is annotated with the originating process name and PID using a proactive psutil polling cache; unattributable connections degrade gracefully to "unknown process"
@@ -129,11 +129,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Capture Foundation | 0/3 | Not started | - |
+| 1. Capture Foundation | 1/3 | In Progress|  |
 | 2. Process Attribution | 0/2 | Not started | - |
 | 3. DNS Resolution | 0/2 | Not started | - |
 | 4. Detection Engine | 0/2 | Not started | - |

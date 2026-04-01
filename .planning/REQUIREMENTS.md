@@ -8,8 +8,8 @@
 ### Capture
 
 - [ ] **CAP-01**: System captures outgoing network packets in real-time using Scapy with `store=False` (no memory accumulation)
-- [ ] **CAP-02**: System runs Npcap startup check and exits with a clear error message if Npcap is not installed
-- [ ] **CAP-03**: System verifies it is running with administrator/root privileges on startup
+- [x] **CAP-02**: System runs Npcap startup check and exits with a clear error message if Npcap is not installed
+- [x] **CAP-03**: System verifies it is running with administrator/root privileges on startup
 - [ ] **CAP-04**: System auto-selects the interface with highest outbound traffic if multiple interfaces are active
 - [ ] **CAP-05**: Packet sniffer runs in a dedicated daemon thread with a bounded asyncio queue (maxsize=500) bridging to FastAPI
 - [ ] **CAP-06**: When the packet queue reaches max capacity, system drops oldest packets (drop-head strategy) instead of blocking
@@ -87,13 +87,13 @@
 
 ### Configuration
 
-- [ ] **CONFIG-01**: All thresholds and runtime settings stored in `config.yaml` (queue size, polling interval, alert rate limit, port allowlist, log rotation size)
-- [ ] **CONFIG-02**: Config is validated at startup with sensible defaults applied for any missing keys
-- [ ] **CONFIG-03**: System logs all critical errors without terminating the main event loop
+- [x] **CONFIG-01**: All thresholds and runtime settings stored in `config.yaml` (queue size, polling interval, alert rate limit, port allowlist, log rotation size)
+- [x] **CONFIG-02**: Config is validated at startup with sensible defaults applied for any missing keys
+- [x] **CONFIG-03**: System logs all critical errors without terminating the main event loop
 
 ### System Reliability
 
-- [ ] **SYS-01**: System logs all critical errors without terminating the main event loop
+- [x] **SYS-01**: System logs all critical errors without terminating the main event loop
 - [ ] **SYS-02**: Graceful shutdown flushes all in-memory data to disk before exit
 
 ### Frontend Dashboard
@@ -143,8 +143,8 @@
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CAP-01 | Phase 1 | Pending |
-| CAP-02 | Phase 1 | Pending |
-| CAP-03 | Phase 1 | Pending |
+| CAP-02 | Phase 1 | Complete |
+| CAP-03 | Phase 1 | Complete |
 | CAP-04 | Phase 1 | Pending |
 | CAP-05 | Phase 1 | Pending |
 | CAP-06 | Phase 1 | Pending |
@@ -178,10 +178,10 @@
 | DET-04 | Phase 4 | Pending |
 | DET-05 | Phase 4 | Pending |
 | DET-06 | Phase 4 | Pending |
-| CONFIG-01 | Phase 1 | Pending |
-| CONFIG-02 | Phase 1 | Pending |
-| CONFIG-03 | Phase 1 | Pending |
-| SYS-01 | Phase 1 | Pending |
+| CONFIG-01 | Phase 1 | Complete |
+| CONFIG-02 | Phase 1 | Complete |
+| CONFIG-03 | Phase 1 | Complete |
+| SYS-01 | Phase 1 | Complete |
 | SYS-02 | Phase 5 | Pending |
 | STORE-01 | Phase 5 | Pending |
 | STORE-02 | Phase 5 | Pending |
