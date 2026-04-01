@@ -1,0 +1,15 @@
+# PNPG Runtime Configuration
+# All values shown are defaults — uncomment and change as needed.
+
+# queue_size: 500          # Max packets in asyncio queue (CAP-05)
+# poll_interval_ms: 200    # psutil polling interval in ms (PROC-02)
+# alert_rate_limit_per_sec: 1  # Max alerts per rule per second (DET-06)
+# port_allowlist: [80, 443, 53, 123, 5353, 8080, 8443]  # Safe ports (DET-03)
+# log_rotation_size_mb: 50 # Max log file size before rotation (STORE-04)
+# debug_mode: false        # Print pipeline events to console (TEST-01)
+# interface: null          # null = auto-select; or specify e.g. "Wi-Fi" (CAP-09)
+# connection_rate_threshold: 50  # Connections/sec trigger (DET-02)
+# dns_cache_size: 1000     # Max DNS cache entries (DNS-06)
+# dns_cache_ttl_sec: 300   # DNS cache TTL in seconds (DNS-04)
+# proc_cache_ttl_sec: 2    # Process cache TTL in seconds (PROC-06)
+# log_dir: logs            # Directory for NDJSON log files
