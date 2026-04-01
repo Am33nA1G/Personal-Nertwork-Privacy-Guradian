@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 01-02-PLAN.md — queue_bridge.py, interface.py, sniffer.py, 8 tests GREEN
-last_updated: "2026-04-01T01:38:21.892Z"
+status: verifying
+stopped_at: Completed 01-03-PLAN.md — sniffer_supervisor, pipeline_worker, main.py lifespan, 23 tests GREEN
+last_updated: "2026-04-01T09:14:32.556Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 
 Phase: 01 (capture-foundation) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-01
 
 Progress: [░░░░░░░░░░] 0%
@@ -54,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01-capture-foundation P01 | 15 | 2 tasks | 11 files |
 | Phase 01-capture-foundation P02 | 138 | 2 tasks | 7 files |
+| Phase 01-capture-foundation P03 | 16 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ Recent decisions affecting current work:
 - [Phase 01-capture-foundation]: Isolated Scapy import behind _get_scapy_ifaces() helper so tests can mock it without Npcap installed
 - [Phase 01-capture-foundation]: drop_counter as list[int] for mutable closure state in Python
 - [Phase 01-capture-foundation]: start_sniffer() is single-run only; supervisor coroutine (CAP-10) deferred to Plan 03
+- [Phase 01-capture-foundation]: sniffer_supervisor uses run_in_executor(None, thread.join) not bare thread.join to avoid blocking event loop
+- [Phase 01-capture-foundation]: make_packet_handler imported at module level in sniffer.py so mock.patch can target pnpg.capture.sniffer.make_packet_handler
+- [Phase 01-capture-foundation]: pipeline_worker calls queue.task_done() in finally block guaranteeing queue.join() unblocks even on exception
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T01:38:21.887Z
-Stopped at: Completed 01-02-PLAN.md — queue_bridge.py, interface.py, sniffer.py, 8 tests GREEN
+Last session: 2026-04-01T09:14:32.551Z
+Stopped at: Completed 01-03-PLAN.md — sniffer_supervisor, pipeline_worker, main.py lifespan, 23 tests GREEN
 Resume file: None

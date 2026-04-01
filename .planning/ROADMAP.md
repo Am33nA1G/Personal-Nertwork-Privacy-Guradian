@@ -12,7 +12,7 @@ Six phases that build the PNPG pipeline from the ground up in dependency order: 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Capture Foundation** - Establish the Scapy threading architecture, Windows prerequisites, and async queue bridge that all subsequent phases depend on
+- [x] **Phase 1: Capture Foundation** - Establish the Scapy threading architecture, Windows prerequisites, and async queue bridge that all subsequent phases depend on (completed 2026-04-01)
 - [ ] **Phase 2: Process Attribution** - Enrich captured packets with originating process name and PID using a psutil polling cache
 - [ ] **Phase 3: DNS Resolution** - Resolve destination IPs to domain names via a thread-pool-backed reverse DNS cache
 - [ ] **Phase 4: Detection Engine** - Apply four rule-based anomaly detection rules to enriched connection events and emit alerts
@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — Windows prerequisites (Npcap check, admin check) and config.yaml loader with defaults
 - [x] 01-02-PLAN.md — Scapy sniffer daemon thread, interface auto-selection, asyncio queue bridge with drop-head
-- [ ] 01-03-PLAN.md — Sniffer supervisor with exponential backoff restart, async pipeline worker, FastAPI lifespan
+- [x] 01-03-PLAN.md — Sniffer supervisor with exponential backoff restart, async pipeline worker, FastAPI lifespan
 
 ### Phase 2: Process Attribution
 **Goal**: Every packet event in the queue is annotated with the originating process name and PID using a proactive psutil polling cache; unattributable connections degrade gracefully to "unknown process"
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Capture Foundation | 2/3 | In Progress|  |
+| 1. Capture Foundation | 3/3 | Complete   | 2026-04-01 |
 | 2. Process Attribution | 0/2 | Not started | - |
 | 3. DNS Resolution | 0/2 | Not started | - |
 | 4. Detection Engine | 0/2 | Not started | - |
