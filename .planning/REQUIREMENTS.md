@@ -16,7 +16,7 @@
 - [x] **CAP-07**: System logs packet drops as INFO events for observability
 - [x] **CAP-08**: Each event includes both wall-clock timestamp (ISO8601) and monotonic timestamp for accurate ordering
 - [x] **CAP-09**: User can override interface selection via `config.yaml` or CLI flag
-- [ ] **CAP-10**: Packet sniffer automatically restarts on failure with exponential backoff
+- [x] **CAP-10**: Packet sniffer automatically restarts on failure with exponential backoff
 
 ### Process Attribution
 
@@ -70,9 +70,9 @@
 
 ### Pipeline Worker
 
-- [ ] **PIPE-01**: A dedicated async pipeline worker consumes packets from the queue and processes each event sequentially through: Analyzer → Process Mapper → DNS Resolver → Detection Engine → Storage → WebSocket push
-- [ ] **PIPE-02**: Pipeline worker preserves packet order — events are processed in the order they are dequeued
-- [ ] **PIPE-03**: Pipeline worker never blocks on DNS or process mapping — all blocking calls dispatched to thread pool executors
+- [x] **PIPE-01**: A dedicated async pipeline worker consumes packets from the queue and processes each event sequentially through: Analyzer → Process Mapper → DNS Resolver → Detection Engine → Storage → WebSocket push
+- [x] **PIPE-02**: Pipeline worker preserves packet order — events are processed in the order they are dequeued
+- [x] **PIPE-03**: Pipeline worker never blocks on DNS or process mapping — all blocking calls dispatched to thread pool executors
 
 ### Performance
 
@@ -151,7 +151,7 @@
 | CAP-07 | Phase 1 | Complete |
 | CAP-08 | Phase 1 | Complete |
 | CAP-09 | Phase 1 | Complete |
-| CAP-10 | Phase 1 | Pending |
+| CAP-10 | Phase 1 | Complete |
 | PROC-01 | Phase 2 | Pending |
 | PROC-02 | Phase 2 | Pending |
 | PROC-03 | Phase 2 | Pending |
@@ -164,9 +164,9 @@
 | DNS-04 | Phase 3 | Pending |
 | DNS-05 | Phase 3 | Pending |
 | DNS-06 | Phase 3 | Pending |
-| PIPE-01 | Phase 1 | Pending |
-| PIPE-02 | Phase 1 | Pending |
-| PIPE-03 | Phase 1 | Pending |
+| PIPE-01 | Phase 1 | Complete |
+| PIPE-02 | Phase 1 | Complete |
+| PIPE-03 | Phase 1 | Complete |
 | PERF-01 | Phase 5 | Pending |
 | PERF-02 | Phase 5 | Pending |
 | TEST-01 | Phase 1 | Complete |
