@@ -1,18 +1,20 @@
-"""Scapy sniffer daemon thread starter.
+"""Scapy sniffer daemon thread starter and supervisor coroutine.
 
 CAP-01: Scapy sniff() runs in a daemon thread with store=False — packets are
         never accumulated in memory; each is processed via the prn= callback.
-CAP-10: (Supervisor) The supervisor coroutine (in Plan 03) wraps this function
-        and handles auto-restart with exponential backoff. start_sniffer()
-        itself is a simple single-run starter — it creates and starts the
-        daemon thread and returns it.
+CAP-10: sniffer_supervisor wraps start_sniffer with exponential backoff restart.
+        start_sniffer() itself is a simple single-run starter — it creates and
+        starts the daemon thread and returns it.
 
 SYS-01 / CONFIG-03: Exceptions inside the sniffer thread are caught and logged
 at CRITICAL level so they don't silently disappear.
 """
+import asyncio
 import logging
 import threading
 from typing import Callable
+
+from pnpg.capture.queue_bridge import make_packet_handler
 
 
 logger = logging.getLogger(__name__)
@@ -77,3 +79,58 @@ def start_sniffer(
     )
     thread.start()
     return thread
+
+
+async def sniffer_supervisor(
+    loop: asyncio.AbstractEventLoop,
+    queue: asyncio.Queue,
+    iface: str,
+    config: dict,
+    drop_counter: list,
+    stop_event: threading.Event,
+) -> None:
+    """Supervisor coroutine that restarts the sniffer thread on failure.
+
+    CAP-10: Auto-restart with exponential backoff. Delay formula:
+            min(1.0 * 2**attempt, 60.0) — starts at 1s, doubles each time,
+            capped at 60s.
+
+    The supervisor:
+    1. Checks stop_event before each start — exits immediately if set.
+    2. Starts the sniffer thread via start_sniffer().
+    3. Awaits the thread's exit via run_in_executor (non-blocking join).
+    4. If stop_event is set after thread exits, exits gracefully.
+    5. Otherwise logs a warning with delay and attempt number, sleeps, restarts.
+
+    Args:
+        loop:         The running asyncio event loop.
+        queue:        The bounded asyncio.Queue for packet events.
+        iface:        Network interface name to sniff on.
+        config:       Config dict (from load_config()).
+        drop_counter: Mutable drop counter list [int].
+        stop_event:   Threading event; set this to request graceful shutdown.
+    """
+    attempt = 0
+    base_delay = 1.0
+    max_delay = 60.0
+
+    while True:
+        if stop_event.is_set():
+            break
+
+        packet_handler = make_packet_handler(loop, queue, drop_counter)
+        thread = start_sniffer(iface, packet_handler, stop_event)
+
+        # Wait for the thread to exit WITHOUT blocking the event loop (RESEARCH Pitfall 5)
+        await loop.run_in_executor(None, thread.join)
+
+        if stop_event.is_set():
+            break  # Graceful shutdown requested while thread was running
+
+        # Thread died unexpectedly — restart with exponential backoff
+        delay = min(base_delay * (2 ** attempt), max_delay)
+        logger.warning(
+            "Sniffer died, restarting in %.1fs (attempt %d)", delay, attempt + 1
+        )
+        await asyncio.sleep(delay)
+        attempt += 1
