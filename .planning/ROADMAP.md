@@ -13,7 +13,7 @@ Six phases that build the PNPG pipeline from the ground up in dependency order: 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Capture Foundation** - Establish the Scapy threading architecture, Windows prerequisites, and async queue bridge that all subsequent phases depend on (completed 2026-04-01)
-- [ ] **Phase 2: Process Attribution** - Enrich captured packets with originating process name and PID using a psutil polling cache
+- [x] **Phase 2: Process Attribution** - Enrich captured packets with originating process name and PID using a psutil polling cache (completed 2026-04-04)
 - [ ] **Phase 3: DNS Resolution** - Resolve destination IPs to domain names via a thread-pool-backed reverse DNS cache
 - [ ] **Phase 4: Detection Engine** - Apply four rule-based anomaly detection rules to enriched connection events and emit alerts
 - [ ] **Phase 5: Data Store and Backend API** - Persist events to bounded in-memory store and NDJSON logs; expose via FastAPI REST and WebSocket
@@ -52,7 +52,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Wave 0 test stubs + process_mapper.py (cache, poller, enrich_event)
-- [ ] 02-02-PLAN.md — Field extraction in queue_bridge (D-01/D-02/D-03), worker integration, lifespan wiring
+- [x] 02-02-PLAN.md — Field extraction in queue_bridge (D-01/D-02/D-03), worker integration, lifespan wiring
 
 ### Phase 3: DNS Resolution
 **Goal**: Destination IP addresses in each connection event are resolved to human-readable domain names using a thread-pool-backed reverse DNS cache with timeout protection; unresolvable IPs fall back to raw IP display
@@ -134,7 +134,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete   | 2026-04-01 |
-| 2. Process Attribution | 1/2 | In Progress|  |
+| 2. Process Attribution | 2/2 | Complete   | 2026-04-04 |
 | 3. DNS Resolution | 0/2 | Not started | - |
 | 4. Detection Engine | 0/2 | Not started | - |
 | 5. Data Store and Backend API | 0/3 | Not started | - |

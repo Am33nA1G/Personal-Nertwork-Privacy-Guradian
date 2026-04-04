@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-01-PLAN.md — process_mapper.py with cache/poller/enrich_event, 10 PROC tests GREEN
-last_updated: "2026-04-04T07:44:23.838Z"
-last_activity: 2026-04-04 -- Phase 02 execution in progress
+stopped_at: Completed 02-02-PLAN.md — field extraction, enrich_event wired, poller started, 39 tests GREEN
+last_updated: "2026-04-04T07:50:42.263Z"
+last_activity: 2026-04-04
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-03-31)
 ## Current Position
 
 Phase: 02 (process-attribution) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 02
-Last activity: 2026-04-04 -- Phase 02 execution started
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-04
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-capture-foundation P02 | 138 | 2 tasks | 7 files |
 | Phase 01-capture-foundation P03 | 16 | 2 tasks | 7 files |
 | Phase 02-process-attribution P01 | 178s | 2 tasks | 3 files |
+| Phase 02-process-attribution P02 | 182 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 02-process-attribution]: Cache atomic mutation uses cache.clear()+cache.update() not reference reassignment to preserve shared dict reference across callers
 - [Phase 02-process-attribution]: VALID_STATUSES filter (ESTABLISHED/SYN_SENT/CLOSE_WAIT) eliminates 0.0.0.0 laddr mismatch from LISTEN sockets
 - [Phase 02-process-attribution]: psutil poller runs as pure asyncio task — empirically verified at 1.1ms per call on this machine, no thread needed
+- [Phase 02-process-attribution]: Config flows as 4th arg through make_packet_handler -> _enqueue_packet -> make_packet_event rather than module-level global — preserves testability
+- [Phase 02-process-attribution]: Poller task cancelled before worker task in shutdown — ensures worker can still read cache during queue drain
 
 ### Pending Todos
 
@@ -94,6 +97,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-04T07:44:23.833Z
-Stopped at: Completed 02-01-PLAN.md — process_mapper.py with cache/poller/enrich_event, 10 PROC tests GREEN
+Last session: 2026-04-04T07:50:42.257Z
+Stopped at: Completed 02-02-PLAN.md — field extraction, enrich_event wired, poller started, 39 tests GREEN
 Resume file: None
