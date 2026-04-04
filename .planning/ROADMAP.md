@@ -51,7 +51,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Wave 0 test stubs + process_mapper.py (cache, poller, enrich_event)
+- [x] 02-01-PLAN.md — Wave 0 test stubs + process_mapper.py (cache, poller, enrich_event)
 - [ ] 02-02-PLAN.md — Field extraction in queue_bridge (D-01/D-02/D-03), worker integration, lifespan wiring
 
 ### Phase 3: DNS Resolution
@@ -134,7 +134,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete   | 2026-04-01 |
-| 2. Process Attribution | 0/2 | Not started | - |
+| 2. Process Attribution | 1/2 | In Progress|  |
 | 3. DNS Resolution | 0/2 | Not started | - |
 | 4. Detection Engine | 0/2 | Not started | - |
 | 5. Data Store and Backend API | 0/3 | Not started | - |

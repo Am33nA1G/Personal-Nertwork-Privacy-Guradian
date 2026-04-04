@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 01-03-PLAN.md — sniffer_supervisor, pipeline_worker, main.py lifespan, 23 tests GREEN
-last_updated: "2026-04-01T09:24:08.342Z"
+stopped_at: Completed 02-01-PLAN.md — process_mapper.py with cache/poller/enrich_event, 10 PROC tests GREEN
+last_updated: "2026-04-04T07:44:23.838Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
   percent: 0
 ---
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-capture-foundation P01 | 15 | 2 tasks | 11 files |
 | Phase 01-capture-foundation P02 | 138 | 2 tasks | 7 files |
 | Phase 01-capture-foundation P03 | 16 | 2 tasks | 7 files |
+| Phase 02-process-attribution P01 | 178s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 01-capture-foundation]: sniffer_supervisor uses run_in_executor(None, thread.join) not bare thread.join to avoid blocking event loop
 - [Phase 01-capture-foundation]: make_packet_handler imported at module level in sniffer.py so mock.patch can target pnpg.capture.sniffer.make_packet_handler
 - [Phase 01-capture-foundation]: pipeline_worker calls queue.task_done() in finally block guaranteeing queue.join() unblocks even on exception
+- [Phase 02-process-attribution]: Cache atomic mutation uses cache.clear()+cache.update() not reference reassignment to preserve shared dict reference across callers
+- [Phase 02-process-attribution]: VALID_STATUSES filter (ESTABLISHED/SYN_SENT/CLOSE_WAIT) eliminates 0.0.0.0 laddr mismatch from LISTEN sockets
+- [Phase 02-process-attribution]: psutil poller runs as pure asyncio task — empirically verified at 1.1ms per call on this machine, no thread needed
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T09:14:32.551Z
-Stopped at: Completed 01-03-PLAN.md — sniffer_supervisor, pipeline_worker, main.py lifespan, 23 tests GREEN
+Last session: 2026-04-04T07:44:23.833Z
+Stopped at: Completed 02-01-PLAN.md — process_mapper.py with cache/poller/enrich_event, 10 PROC tests GREEN
 Resume file: None

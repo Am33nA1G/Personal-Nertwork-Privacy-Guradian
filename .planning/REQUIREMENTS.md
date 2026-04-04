@@ -20,12 +20,12 @@
 
 ### Process Attribution
 
-- [ ] **PROC-01**: System maps each connection to an originating process name and PID using psutil
-- [ ] **PROC-02**: psutil connection table is polled on a background schedule (200ms interval) — not called per-packet
-- [ ] **PROC-03**: Connections that cannot be attributed show "unknown process" rather than failing or crashing
-- [ ] **PROC-04**: System handles `AccessDenied` from psutil for system processes gracefully
-- [ ] **PROC-05**: System correlates packet (src_ip, src_port) with psutil connection table using a lookup cache
-- [ ] **PROC-06**: Mapping cache entries expire after configurable TTL (default: 2 seconds) to prevent stale attribution
+- [x] **PROC-01**: System maps each connection to an originating process name and PID using psutil
+- [x] **PROC-02**: psutil connection table is polled on a background schedule (200ms interval) — not called per-packet
+- [x] **PROC-03**: Connections that cannot be attributed show "unknown process" rather than failing or crashing
+- [x] **PROC-04**: System handles `AccessDenied` from psutil for system processes gracefully
+- [x] **PROC-05**: System correlates packet (src_ip, src_port) with psutil connection table using a lookup cache
+- [x] **PROC-06**: Mapping cache entries expire after configurable TTL (default: 2 seconds) to prevent stale attribution
 
 ### DNS Resolution
 
@@ -152,12 +152,12 @@
 | CAP-08 | Phase 1 | Complete |
 | CAP-09 | Phase 1 | Complete |
 | CAP-10 | Phase 1 | Complete |
-| PROC-01 | Phase 2 | Pending |
-| PROC-02 | Phase 2 | Pending |
-| PROC-03 | Phase 2 | Pending |
-| PROC-04 | Phase 2 | Pending |
-| PROC-05 | Phase 2 | Pending |
-| PROC-06 | Phase 2 | Pending |
+| PROC-01 | Phase 2 | Complete |
+| PROC-02 | Phase 2 | Complete |
+| PROC-03 | Phase 2 | Complete |
+| PROC-04 | Phase 2 | Complete |
+| PROC-05 | Phase 2 | Complete |
+| PROC-06 | Phase 2 | Complete |
 | DNS-01 | Phase 3 | Pending |
 | DNS-02 | Phase 3 | Pending |
 | DNS-03 | Phase 3 | Pending |
