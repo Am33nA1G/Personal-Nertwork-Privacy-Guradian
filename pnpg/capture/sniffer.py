@@ -118,7 +118,7 @@ async def sniffer_supervisor(
         if stop_event.is_set():
             break
 
-        packet_handler = make_packet_handler(loop, queue, drop_counter)
+        packet_handler = make_packet_handler(loop, queue, drop_counter, config)
         thread = start_sniffer(iface, packet_handler, stop_event)
 
         # Wait for the thread to exit WITHOUT blocking the event loop (RESEARCH Pitfall 5)

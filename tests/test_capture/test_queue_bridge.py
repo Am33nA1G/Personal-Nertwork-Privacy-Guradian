@@ -42,7 +42,9 @@ def test_drop_head():
 
     drop_counter = [0]
     mock_pkt = mock.MagicMock()
-    _enqueue_packet(q, drop_counter, mock_pkt)
+    mock_pkt.haslayer = lambda layer: False  # No IP layer — no field extraction needed
+    config = {"debug_mode": False}
+    _enqueue_packet(q, drop_counter, mock_pkt, config)
 
     assert drop_counter[0] == 1
     # Queue should contain 3 items; the oldest (0) was dropped
@@ -63,9 +65,11 @@ def test_drop_log(caplog):
 
     drop_counter = [0]
     mock_pkt = mock.MagicMock()
+    mock_pkt.haslayer = lambda layer: False  # No IP layer
+    config = {"debug_mode": False}
 
     with caplog.at_level(logging.INFO):
-        _enqueue_packet(q, drop_counter, mock_pkt)
+        _enqueue_packet(q, drop_counter, mock_pkt, config)
 
     assert "Packet dropped" in caplog.text
     assert drop_counter[0] == 1
@@ -74,7 +78,8 @@ def test_drop_log(caplog):
 def test_timestamps():
     """CAP-08: Each packet event must have ISO8601 wall-clock and monotonic timestamps."""
     mock_pkt = mock.MagicMock()
-    event = make_packet_event(mock_pkt)
+    mock_pkt.haslayer = lambda layer: False  # No IP layer
+    event = make_packet_event(mock_pkt, {"debug_mode": False})
 
     assert "timestamp" in event
     assert "T" in event["timestamp"]
@@ -88,14 +93,15 @@ def test_packet_handler_calls_threadsafe():
     mock_loop = mock.MagicMock()
     q = asyncio.Queue(maxsize=10)
     drop_counter = [0]
+    config = {"debug_mode": False}
 
-    handler = make_packet_handler(mock_loop, q, drop_counter)
+    handler = make_packet_handler(mock_loop, q, drop_counter, config)
     mock_pkt = mock.MagicMock()
     handler(mock_pkt)
 
     assert mock_loop.call_soon_threadsafe.called
     mock_loop.call_soon_threadsafe.assert_called_once_with(
-        _enqueue_packet, q, drop_counter, mock_pkt
+        _enqueue_packet, q, drop_counter, mock_pkt, config
     )
 
 
