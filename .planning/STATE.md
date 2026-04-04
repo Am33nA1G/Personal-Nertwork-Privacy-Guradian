@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Completed 02-01-PLAN.md — process_mapper.py with cache/poller/enrich_event, 10 PROC tests GREEN
 last_updated: "2026-04-04T07:44:23.838Z"
-last_activity: 2026-04-01
+last_activity: 2026-04-04 -- Phase 02 execution in progress
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-31)
 
 **Core value:** Users can see exactly which apps are talking to the internet and get alerted when something looks suspicious — without needing to understand Wireshark.
-**Current focus:** Phase 01 — capture-foundation
+**Current focus:** Phase 02 — process-attribution
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-01
+Phase: 02 (process-attribution) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 02
+Last activity: 2026-04-04 -- Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
