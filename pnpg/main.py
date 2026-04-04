@@ -22,6 +22,7 @@ from fastapi import FastAPI
 from pnpg.capture.interface import select_interface
 from pnpg.capture.sniffer import sniffer_supervisor
 from pnpg.config import load_config
+from pnpg.pipeline.process_mapper import process_poller_loop
 from pnpg.pipeline.worker import pipeline_worker
 from pnpg.prereqs import check_admin, check_npcap
 
@@ -81,9 +82,16 @@ async def lifespan(app: FastAPI):
         name="sniffer-supervisor",
     )
 
+    # 6.5. Create process attribution cache and start poller (PROC-02)
+    process_cache: dict = {}
+    poller_task = asyncio.create_task(
+        process_poller_loop(process_cache, config),
+        name="process-poller",
+    )
+
     # 7. Start pipeline worker task (PIPE-01)
     worker_task = asyncio.create_task(
-        pipeline_worker(queue, config),
+        pipeline_worker(queue, config, process_cache),
         name="pipeline-worker",
     )
 
@@ -92,6 +100,7 @@ async def lifespan(app: FastAPI):
     app.state.config = config
     app.state.drop_counter = drop_counter
     app.state.stop_event = stop_event
+    app.state.process_cache = process_cache
 
     logger.info(
         "PNPG started — interface: %s, queue_size: %d",
@@ -105,6 +114,14 @@ async def lifespan(app: FastAPI):
     logger.info("PNPG shutting down...")
     stop_event.set()
     supervisor_task.cancel()
+
+    # Cancel poller before worker so worker can still read cache during queue drain
+    poller_task.cancel()
+    try:
+        await poller_task
+    except asyncio.CancelledError:
+        pass
+
     worker_task.cancel()
 
     try:

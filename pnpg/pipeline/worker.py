@@ -11,28 +11,35 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from pnpg.pipeline.process_mapper import enrich_event
+
 
 logger = logging.getLogger(__name__)
 
 
-async def pipeline_worker(queue: asyncio.Queue, config: dict) -> None:
+async def pipeline_worker(
+    queue: asyncio.Queue, config: dict, process_cache: dict
+) -> None:
     """Consume packet events from the queue and route them through enrichment stages.
 
     The worker runs until cancelled. On each iteration it:
     1. Awaits an event from the queue (FIFO order — PIPE-02).
-    2. Passes the event through enrichment stage stubs (Phase 2-5 placeholders).
-    3. Logs the event at DEBUG level if debug_mode is enabled (TEST-01).
-    4. Handles any processing exception via logging.critical without crashing
+    2. Enriches the event with process attribution via enrich_event (PROC-01/PROC-05).
+    3. Passes the event through enrichment stage stubs (Phase 3-5 placeholders).
+    4. Logs the event at DEBUG level if debug_mode is enabled (TEST-01).
+    5. Handles any processing exception via logging.critical without crashing
        (CONFIG-03/SYS-01).
-    5. Calls queue.task_done() in the finally block to unblock queue.join().
+    6. Calls queue.task_done() in the finally block to unblock queue.join().
 
     The ThreadPoolExecutor is created once and reused across iterations so
-    future blocking stages (DNS, process mapping) can use run_in_executor
-    without creating a new pool per event (PIPE-03).
+    future blocking stages (DNS) can use run_in_executor without creating a
+    new pool per event (PIPE-03).
 
     Args:
-        queue:  The bounded asyncio.Queue fed by the sniffer queue bridge.
-        config: Config dict (from load_config()). Checked for 'debug_mode'.
+        queue:         The bounded asyncio.Queue fed by the sniffer queue bridge.
+        config:        Config dict (from load_config()). Checked for 'debug_mode'.
+        process_cache: Shared process attribution cache dict populated by
+                       process_poller_loop. Passed to enrich_event each iteration.
     """
     executor = ThreadPoolExecutor(max_workers=4)
     loop = asyncio.get_running_loop()
@@ -44,8 +51,10 @@ async def pipeline_worker(queue: asyncio.Queue, config: dict) -> None:
             break
 
         try:
-            # --- Enrichment stage stubs (filled in Phase 2-5) ---
-            # Phase 2: event = await process_mapper(event, executor, loop)
+            # Phase 2: Process attribution (PROC-01/PROC-05)
+            event = enrich_event(event, process_cache)
+
+            # --- Enrichment stage stubs (filled in Phase 3-5) ---
             # Phase 3: event = await dns_resolver(event, executor, loop)
             # Phase 4: alerts = detection_engine(event, config)
             # Phase 5: storage_writer(event)

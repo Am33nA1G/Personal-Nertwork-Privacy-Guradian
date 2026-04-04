@@ -46,7 +46,7 @@ async def test_consumes_queue():
 
     config = _make_config()
 
-    worker_task = asyncio.create_task(pipeline_worker(queue, config))
+    worker_task = asyncio.create_task(pipeline_worker(queue, config, {}))
     try:
         await asyncio.wait_for(queue.join(), timeout=2.0)
     finally:
@@ -191,7 +191,7 @@ async def test_debug_mode(caplog):
     config = _make_config(debug_mode=True)
 
     with caplog.at_level(logging.DEBUG, logger="pnpg.pipeline.worker"):
-        worker_task = asyncio.create_task(pipeline_worker(queue, config))
+        worker_task = asyncio.create_task(pipeline_worker(queue, config, {}))
         try:
             await asyncio.wait_for(queue.join(), timeout=2.0)
         finally:
