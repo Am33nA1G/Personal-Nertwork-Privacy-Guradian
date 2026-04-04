@@ -13,8 +13,9 @@ import unittest.mock as mock
 
 import pytest
 
-from pnpg.pipeline.worker import pipeline_worker
 from pnpg.config import DEFAULT_CONFIG
+from pnpg.pipeline.dns_resolver import TtlLruCache
+from pnpg.pipeline.worker import pipeline_worker
 
 
 def _make_event(seq: int) -> dict:
@@ -23,6 +24,9 @@ def _make_event(seq: int) -> dict:
         "seq": seq,
         "timestamp": "2026-04-01T00:00:00+00:00",
         "monotonic": time.monotonic(),
+        "src_ip": "192.168.1.10",
+        "src_port": 10000 + seq,
+        "dst_ip": "127.0.0.1",
         "raw_pkt": None,
     }
 
@@ -45,8 +49,9 @@ async def test_consumes_queue():
         await queue.put(_make_event(i))
 
     config = _make_config()
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
 
-    worker_task = asyncio.create_task(pipeline_worker(queue, config, {}))
+    worker_task = asyncio.create_task(pipeline_worker(queue, config, {}, dns_cache))
     try:
         await asyncio.wait_for(queue.join(), timeout=2.0)
     finally:
@@ -189,9 +194,12 @@ async def test_debug_mode(caplog):
     await queue.put(_make_event(0))
 
     config = _make_config(debug_mode=True)
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
 
     with caplog.at_level(logging.DEBUG, logger="pnpg.pipeline.worker"):
-        worker_task = asyncio.create_task(pipeline_worker(queue, config, {}))
+        worker_task = asyncio.create_task(
+            pipeline_worker(queue, config, {}, dns_cache)
+        )
         try:
             await asyncio.wait_for(queue.join(), timeout=2.0)
         finally:
@@ -202,3 +210,62 @@ async def test_debug_mode(caplog):
                 pass
 
     assert "PIPELINE EVENT" in caplog.text, "Expected 'PIPELINE EVENT' in DEBUG log when debug_mode=True"
+
+
+def test_probe_fallback_logged(caplog):
+    """SYS-03: get_probe_type() logs the libpcap probe selection notice."""
+    from pnpg.prereqs import get_probe_type
+
+    with caplog.at_level(logging.INFO):
+        probe = get_probe_type()
+
+    assert probe == "libpcap"
+    assert "SYS-03" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_enrichment_stages_wired():
+    """Phase 3: Verify all three enrichment stages are called in sequence."""
+    queue = asyncio.Queue(maxsize=10)
+    event = _make_event(0)
+    event["dst_ip"] = "8.8.8.8"
+    event["src_ip"] = "192.168.1.5"
+    event["src_port"] = 12345
+    await queue.put(event)
+
+    config = _make_config(debug_mode=True)
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
+
+    with mock.patch(
+        "pnpg.pipeline.worker.enrich_dns", new_callable=mock.AsyncMock
+    ) as mock_dns, mock.patch(
+        "pnpg.pipeline.worker.enrich_geo"
+    ) as mock_geo, mock.patch(
+        "pnpg.pipeline.worker.check_threat_intel"
+    ) as mock_threat:
+        mock_dns.return_value = {**event, "dst_hostname": "dns.google"}
+        mock_geo.return_value = {
+            **event,
+            "dst_hostname": "dns.google",
+            "dst_country": "US",
+        }
+        mock_threat.return_value = {
+            **event,
+            "dst_hostname": "dns.google",
+            "dst_country": "US",
+            "threat_intel": {"is_blocklisted": False, "source": None},
+        }
+
+        worker_task = asyncio.create_task(pipeline_worker(queue, config, {}, dns_cache))
+        try:
+            await asyncio.wait_for(queue.join(), timeout=2.0)
+        finally:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+
+        mock_dns.assert_awaited_once()
+        mock_geo.assert_called_once_with(mock_dns.return_value)
+        mock_threat.assert_called_once_with(mock_geo.return_value)

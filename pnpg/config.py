@@ -24,6 +24,9 @@ DEFAULT_CONFIG: dict = {
     "dns_cache_ttl_sec": 300,
     "proc_cache_ttl_sec": 2,
     "log_dir": "logs",
+    "geoip_country_db": "data/GeoLite2-Country.mmdb",
+    "geoip_asn_db": "data/GeoLite2-ASN.mmdb",
+    "blocklist_path": "data/blocklist.txt",
 }
 
 

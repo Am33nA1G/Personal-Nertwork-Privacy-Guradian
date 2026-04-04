@@ -11,14 +11,20 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from pnpg.pipeline.dns_resolver import TtlLruCache, enrich_dns
+from pnpg.pipeline.geo_enricher import enrich_geo
 from pnpg.pipeline.process_mapper import enrich_event
+from pnpg.pipeline.threat_intel import check_threat_intel
 
 
 logger = logging.getLogger(__name__)
 
 
 async def pipeline_worker(
-    queue: asyncio.Queue, config: dict, process_cache: dict
+    queue: asyncio.Queue,
+    config: dict,
+    process_cache: dict,
+    dns_cache: TtlLruCache,
 ) -> None:
     """Consume packet events from the queue and route them through enrichment stages.
 
@@ -41,7 +47,7 @@ async def pipeline_worker(
         process_cache: Shared process attribution cache dict populated by
                        process_poller_loop. Passed to enrich_event each iteration.
     """
-    executor = ThreadPoolExecutor(max_workers=4)
+    executor = ThreadPoolExecutor(max_workers=16)
     loop = asyncio.get_running_loop()
 
     while True:
@@ -54,8 +60,15 @@ async def pipeline_worker(
             # Phase 2: Process attribution (PROC-01/PROC-05)
             event = enrich_event(event, process_cache)
 
-            # --- Enrichment stage stubs (filled in Phase 3-5) ---
-            # Phase 3: event = await dns_resolver(event, executor, loop)
+            # Phase 3: DNS resolution (DNS-01..06) - async, uses thread pool
+            event = await enrich_dns(event, dns_cache, executor, loop)
+
+            # Phase 3: GeoIP + ASN enrichment (GEO-01..05) - synchronous, local memory
+            event = enrich_geo(event)
+
+            # Phase 3: Threat intel check (THREAT-01..05) - synchronous, frozenset lookup
+            event = check_threat_intel(event)
+
             # Phase 4: alerts = detection_engine(event, config)
             # Phase 5: storage_writer(event)
             # Phase 5: websocket_push(event)

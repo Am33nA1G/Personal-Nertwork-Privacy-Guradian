@@ -22,9 +22,12 @@ from fastapi import FastAPI
 from pnpg.capture.interface import select_interface
 from pnpg.capture.sniffer import sniffer_supervisor
 from pnpg.config import load_config
+from pnpg.pipeline.dns_resolver import TtlLruCache
+from pnpg.pipeline.geo_enricher import check_db_freshness, close_readers, open_readers
 from pnpg.pipeline.process_mapper import process_poller_loop
+from pnpg.pipeline.threat_intel import load_blocklist
 from pnpg.pipeline.worker import pipeline_worker
-from pnpg.prereqs import check_admin, check_npcap
+from pnpg.prereqs import check_admin, check_npcap, get_probe_type
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -61,11 +64,30 @@ async def lifespan(app: FastAPI):
     # 1. Load config (CONFIG-01/02)
     config = load_config()
 
+    # Phase 3: Initialize DNS cache (DNS-04, DNS-06)
+    dns_cache = TtlLruCache(
+        maxsize=config["dns_cache_size"],
+        ttl=config["dns_cache_ttl_sec"],
+    )
+
+    # Phase 3: Open GeoIP database readers (GEO-01, GEO-02)
+    open_readers(config["geoip_country_db"], config["geoip_asn_db"])
+
+    # Phase 3: Check GeoIP database freshness (GEO-05)
+    check_db_freshness(config["geoip_country_db"], 30 * 86400, "GEOIP_STALE")
+    check_db_freshness(config["geoip_asn_db"], 30 * 86400, "GEOIP_STALE")
+
+    # Phase 3: Load threat intel blocklist (THREAT-01, THREAT-02)
+    load_blocklist(config["blocklist_path"])
+
     # 2. Verify Npcap is installed (CAP-02)
     check_npcap()
 
     # 3. Verify admin privileges (CAP-03)
     check_admin()
+
+    # SYS-03: select the active capture probe type
+    probe_type = get_probe_type()
 
     # 4. Select network interface (CAP-04/09)
     iface = select_interface(config)
@@ -91,7 +113,7 @@ async def lifespan(app: FastAPI):
 
     # 7. Start pipeline worker task (PIPE-01)
     worker_task = asyncio.create_task(
-        pipeline_worker(queue, config, process_cache),
+        pipeline_worker(queue, config, process_cache, dns_cache),
         name="pipeline-worker",
     )
 
@@ -101,6 +123,8 @@ async def lifespan(app: FastAPI):
     app.state.drop_counter = drop_counter
     app.state.stop_event = stop_event
     app.state.process_cache = process_cache
+    app.state.dns_cache = dns_cache
+    app.state.probe_type = probe_type
 
     logger.info(
         "PNPG started — interface: %s, queue_size: %d",
@@ -133,6 +157,9 @@ async def lifespan(app: FastAPI):
         await worker_task
     except asyncio.CancelledError:
         pass
+
+    # Phase 3: Close GeoIP readers
+    close_readers()
 
     logger.info("PNPG shutdown complete.")
 

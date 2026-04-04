@@ -88,3 +88,15 @@ def check_admin() -> None:
             file=sys.stderr,
         )
         sys.exit(1)
+
+
+def get_probe_type() -> str:
+    """Determine the active capture probe type.
+
+    Returns 'libpcap' on all platforms for v1.
+    SYS-03: If eBPF were available and failed, this would return 'libpcap'
+    with a logged notice. In v1, eBPF is not implemented, so this always
+    returns 'libpcap'.
+    """
+    logger.info("SYS-03: Capture probe type: libpcap (eBPF not available in v1)")
+    return "libpcap"
