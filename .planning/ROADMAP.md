@@ -12,7 +12,7 @@ Six phases that build the PNPG pipeline from the ground up in dependency order: 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [x] **Phase 1: Capture Foundation** - Establish the Scapy threading architecture, Windows prerequisites, and async queue bridge that all subsequent phases depend on (completed 2026-04-01)
+- [x] **Phase 1: Capture Foundation** - Establish the Scapy threading architecture, Windows prerequisites, and async queue bridge that all subsequent phases depend on (completed 2026-04-01)
 - [ ] **Phase 2: Process Attribution** - Enrich captured packets with originating process name and PID using a psutil polling cache
 - [ ] **Phase 3: DNS Resolution** - Resolve destination IPs to domain names via a thread-pool-backed reverse DNS cache
 - [ ] **Phase 4: Detection Engine** - Apply four rule-based anomaly detection rules to enriched connection events and emit alerts
@@ -48,11 +48,11 @@ Plans:
   3. Short-lived connections that disappear before the cache updates show "unknown process" rather than hanging or erroring
   4. psutil.net_connections() is called on a 200ms background schedule — never once per packet — confirmed by log timestamps
   5. Cache entries expire after the configured TTL (default 2 seconds) so stale PIDs do not persist indefinitely
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: psutil background poller (200ms interval) with TTL-expiring connection cache
-- [ ] 02-02: Packet-to-process correlation using (src_ip, src_port) lookup; graceful fallback to "unknown process"
+- [ ] 02-01-PLAN.md — Wave 0 test stubs + process_mapper.py (cache, poller, enrich_event)
+- [ ] 02-02-PLAN.md — Field extraction in queue_bridge (D-01/D-02/D-03), worker integration, lifespan wiring
 
 ### Phase 3: DNS Resolution
 **Goal**: Destination IP addresses in each connection event are resolved to human-readable domain names using a thread-pool-backed reverse DNS cache with timeout protection; unresolvable IPs fall back to raw IP display
