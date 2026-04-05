@@ -14,6 +14,7 @@ import unittest.mock as mock
 import pytest
 
 from pnpg.config import DEFAULT_CONFIG
+from pnpg.pipeline.detector import DetectorState
 from pnpg.pipeline.dns_resolver import TtlLruCache
 from pnpg.pipeline.worker import pipeline_worker
 
@@ -38,6 +39,10 @@ def _make_config(**overrides):
     return cfg
 
 
+def _make_detector_state() -> DetectorState:
+    return DetectorState()
+
+
 @pytest.mark.asyncio
 async def test_consumes_queue():
     """PIPE-01: Worker consumes all events from the queue.
@@ -51,7 +56,9 @@ async def test_consumes_queue():
     config = _make_config()
     dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
 
-    worker_task = asyncio.create_task(pipeline_worker(queue, config, {}, dns_cache))
+    worker_task = asyncio.create_task(
+        pipeline_worker(queue, config, {}, dns_cache, _make_detector_state())
+    )
     try:
         await asyncio.wait_for(queue.join(), timeout=2.0)
     finally:
@@ -198,7 +205,7 @@ async def test_debug_mode(caplog):
 
     with caplog.at_level(logging.DEBUG, logger="pnpg.pipeline.worker"):
         worker_task = asyncio.create_task(
-            pipeline_worker(queue, config, {}, dns_cache)
+            pipeline_worker(queue, config, {}, dns_cache, _make_detector_state())
         )
         try:
             await asyncio.wait_for(queue.join(), timeout=2.0)
@@ -256,7 +263,9 @@ async def test_enrichment_stages_wired():
             "threat_intel": {"is_blocklisted": False, "source": None},
         }
 
-        worker_task = asyncio.create_task(pipeline_worker(queue, config, {}, dns_cache))
+        worker_task = asyncio.create_task(
+            pipeline_worker(queue, config, {}, dns_cache, _make_detector_state())
+        )
         try:
             await asyncio.wait_for(queue.join(), timeout=2.0)
         finally:

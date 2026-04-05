@@ -13,3 +13,6 @@
 # dns_cache_ttl_sec: 300   # DNS cache TTL in seconds (DNS-04)
 # proc_cache_ttl_sec: 2    # Process cache TTL in seconds (PROC-06)
 # log_dir: logs            # Directory for NDJSON log files
+# connection_rate_threshold_per_min: 100  # Max connections per minute per process (DET-02)
+# tor_exit_list_path: data/tor-exit-nodes.txt  # Path to TOR exit node IP list (DET-06)
+# known_processes: [chrome.exe, firefox.exe, msedge.exe, explorer.exe, svchost.exe, System, python.exe, node.exe, code.exe]  # Known-good process names (DET-03)

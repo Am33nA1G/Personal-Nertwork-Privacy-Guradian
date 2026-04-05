@@ -11,6 +11,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 
+from pnpg.pipeline.detector import DetectorState, detect_event
 from pnpg.pipeline.dns_resolver import TtlLruCache, enrich_dns
 from pnpg.pipeline.geo_enricher import enrich_geo
 from pnpg.pipeline.process_mapper import enrich_event
@@ -25,6 +26,7 @@ async def pipeline_worker(
     config: dict,
     process_cache: dict,
     dns_cache: TtlLruCache,
+    detector_state: DetectorState,
 ) -> None:
     """Consume packet events from the queue and route them through enrichment stages.
 
@@ -46,6 +48,7 @@ async def pipeline_worker(
         config:        Config dict (from load_config()). Checked for 'debug_mode'.
         process_cache: Shared process attribution cache dict populated by
                        process_poller_loop. Passed to enrich_event each iteration.
+        detector_state: Shared detector state used across detection evaluations.
     """
     executor = ThreadPoolExecutor(max_workers=16)
     loop = asyncio.get_running_loop()
@@ -69,7 +72,10 @@ async def pipeline_worker(
             # Phase 3: Threat intel check (THREAT-01..05) - synchronous, frozenset lookup
             event = check_threat_intel(event)
 
-            # Phase 4: alerts = detection_engine(event, config)
+            alerts = await detect_event(event, config, detector_state)
+            if alerts:
+                logger.info("Detection alerts: %s", [a["rule_id"] for a in alerts])
+
             # Phase 5: storage_writer(event)
             # Phase 5: websocket_push(event)
 

@@ -22,6 +22,7 @@ from fastapi import FastAPI
 from pnpg.capture.interface import select_interface
 from pnpg.capture.sniffer import sniffer_supervisor
 from pnpg.config import load_config
+from pnpg.pipeline.detector import DetectorState, load_tor_exit_nodes
 from pnpg.pipeline.dns_resolver import TtlLruCache
 from pnpg.pipeline.geo_enricher import check_db_freshness, close_readers, open_readers
 from pnpg.pipeline.process_mapper import process_poller_loop
@@ -80,6 +81,13 @@ async def lifespan(app: FastAPI):
     # Phase 3: Load threat intel blocklist (THREAT-01, THREAT-02)
     load_blocklist(config["blocklist_path"])
 
+    detector_state = DetectorState(
+        tor_exit_nodes=load_tor_exit_nodes(
+            config.get("tor_exit_list_path", "data/tor-exit-nodes.txt")
+        )
+    )
+    app.state.detector_state = detector_state
+
     # 2. Verify Npcap is installed (CAP-02)
     check_npcap()
 
@@ -113,7 +121,13 @@ async def lifespan(app: FastAPI):
 
     # 7. Start pipeline worker task (PIPE-01)
     worker_task = asyncio.create_task(
-        pipeline_worker(queue, config, process_cache, dns_cache),
+        pipeline_worker(
+            queue,
+            config,
+            process_cache,
+            dns_cache,
+            detector_state=detector_state,
+        ),
         name="pipeline-worker",
     )
 
@@ -124,6 +138,7 @@ async def lifespan(app: FastAPI):
     app.state.stop_event = stop_event
     app.state.process_cache = process_cache
     app.state.dns_cache = dns_cache
+    app.state.detector_state = detector_state
     app.state.probe_type = probe_type
 
     logger.info(

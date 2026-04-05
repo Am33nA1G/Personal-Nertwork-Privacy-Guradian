@@ -27,6 +27,19 @@ DEFAULT_CONFIG: dict = {
     "geoip_country_db": "data/GeoLite2-Country.mmdb",
     "geoip_asn_db": "data/GeoLite2-ASN.mmdb",
     "blocklist_path": "data/blocklist.txt",
+    "connection_rate_threshold_per_min": 100,
+    "tor_exit_list_path": "data/tor-exit-nodes.txt",
+    "known_processes": [
+        "chrome.exe",
+        "firefox.exe",
+        "msedge.exe",
+        "explorer.exe",
+        "svchost.exe",
+        "System",
+        "python.exe",
+        "node.exe",
+        "code.exe",
+    ],
 }
 
 

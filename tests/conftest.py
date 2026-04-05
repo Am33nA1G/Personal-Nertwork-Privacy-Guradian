@@ -58,3 +58,28 @@ def mock_not_admin():
     with patch("ctypes.windll") as mock_windll:
         mock_windll.shell32.IsUserAnAdmin.return_value = 0
         yield mock_windll
+
+
+@pytest.fixture
+def detector_state():
+    from pnpg.pipeline.detector import DetectorState
+
+    return DetectorState()
+
+
+@pytest.fixture
+def enriched_event():
+    return {
+        "process_name": "chrome.exe",
+        "pid": 1234,
+        "dst_ip": "93.184.216.34",
+        "dst_hostname": "example.com",
+        "dst_port": 443,
+        "protocol": "TCP",
+        "src_ip": "192.168.1.5",
+        "src_port": 52341,
+        "threat_intel": {"is_blocklisted": False, "source": None},
+        "dst_country": "US",
+        "dst_asn": "AS15169",
+        "dst_org": "Google LLC",
+    }
