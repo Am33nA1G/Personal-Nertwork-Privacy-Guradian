@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { renderHook } from '@testing-library/react';
 
 describe('useAuth', () => {
