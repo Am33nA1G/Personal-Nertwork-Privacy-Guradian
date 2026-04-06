@@ -10,3 +10,10 @@ describe('useWebSocket', () => {
   it.todo('returns status: connected after onopen');
   it.todo('returns status: disconnected after close');
 });
+
+describe('useWebSocket — pause/resume', () => {
+  it.todo('does not call onBatch when isPaused is true');
+  it.todo('buffers events while paused');
+  it.todo('flushes pending buffer into onBatch on resume');
+  it.todo('clears pending buffer after resume');
+});
