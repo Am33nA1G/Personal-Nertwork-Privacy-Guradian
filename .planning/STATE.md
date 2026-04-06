@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md — scaffold, auth, WebSocket, live table
-last_updated: "2026-04-06T01:48:12.590Z"
+stopped_at: Completed 06-02-PLAN.md — AlertsPanel, suppress/resolve, pause/resume, SuppressionsLog
+last_updated: "2026-04-06T02:04:59.740Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: [.planning/PROJECT.md](C:/Users/alame/Desktop/network%20Lab%20project/.plan
 ## Current Position
 
 Phase: 06 (frontend-dashboard) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-06
 
@@ -58,6 +58,9 @@ Progress: [#######---] 71%
 - next.config.mjs retained as ESM format (not converted to .js CJS); API proxy rewrites work identically.
 - Jest 30 requires `next/jest.js` import (with .js extension) for ESM compatibility; bare `next/jest` throws ERR_MODULE_NOT_FOUND.
 - ConnectionsTable uses prop-driven useEffect injection pattern (newEvents prop) rather than an imperative handle for simpler parent wiring.
+- AlertsPanel is display-only — index.tsx owns alerts state via initial GET /api/v1/alerts on mount and WS batch appends (slice to 200).
+- Pause/resume moved fully into useWebSocket hook returning isPaused, pendingCount, pause, resume; index.tsx calls hook API only.
+- SuppressionsLog placement (tab vs dedicated page) deferred to 06-03; component fully implemented.
 
 ## Pending Todos
 
@@ -70,6 +73,7 @@ Progress: [#######---] 71%
   - 06-UAT.md (new — 14 UAT tests covering all 8 roadmap success criteria)
 - ROADMAP.md progress table corrected (Phase 5 was wrongly showing 0/3; now shows 3/3 Complete)
 - Phase 6 Plan 01 COMPLETE — resume at 06-02-PLAN.md (alerts panel, suppress/resolve, error/loading states)
+- Phase 6 Plan 02 COMPLETE — resume at 06-03-PLAN.md (charts, allowlist manager, capture status, integration polish)
 
 ## Blockers and Concerns
 
@@ -79,6 +83,6 @@ Progress: [#######---] 71%
 
 ## Session Continuity
 
-Last session: 2026-04-06T01:48:12.581Z
-Stopped at: Completed 06-01-PLAN.md — scaffold, auth, WebSocket, live table
+Last session: 2026-04-06T02:04:59.731Z
+Stopped at: Completed 06-02-PLAN.md — AlertsPanel, suppress/resolve, pause/resume, SuppressionsLog
 Resume file: None

@@ -137,7 +137,7 @@ Plans:
 
 Plans:
 - [x] 06-01: Next.js 14 project scaffold with Bootstrap 5 layout; live connections table component with delta-update row injection; WebSocket client with exponential backoff reconnect (UI-01, UI-06, UI-07, UI-10, UI-11)
-- [ ] 06-02: Alerts panel component with severity color coding, Suppress and Resolve actions wired to API; pause/resume toggle (UI-02, UI-07, UI-08, SUPP-04)
+- [x] 06-02: Alerts panel component with severity color coding, Suppress and Resolve actions wired to API; pause/resume toggle (UI-02, UI-07, UI-08, SUPP-04)
 - [ ] 06-03: Recharts connections-per-app bar/donut chart; connections-per-second rolling line chart; capture status indicator; Allowlist Manager screen (UI-03, UI-04, UI-05, UI-09)
 **UI hint**: yes
 
@@ -174,7 +174,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Enrichment Service | 3/3 | Complete | 2026-04-05 |
 | 4. Detection Engine | 2/2 | Complete | 2026-04-05 |
 | 5. Data Store and Backend API | 3/3 | Complete   | 2026-04-05 |
-| 6. Frontend Dashboard | 1/3 | In Progress|  |
+| 6. Frontend Dashboard | 2/3 | In Progress|  |
 | 7. Deployment & Observability | 0/3 | Not started | - |
 
 **Total:** 107 requirements across 7 phases, 19 plans

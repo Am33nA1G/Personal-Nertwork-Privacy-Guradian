@@ -80,7 +80,7 @@
 - [ ] **SUPP-01**: User can suppress a single alert instance ("dismiss this one")
 - [ ] **SUPP-02**: User can suppress all future alerts from a specific rule for a specific process
 - [ ] **SUPP-03**: Suppressions are persisted in PostgreSQL with created_at, rule_id, process_name (nullable), scope, reason
-- [ ] **SUPP-04**: A suppression log is viewable in the dashboard with the ability to undo any suppression
+- [x] **SUPP-04**: A suppression log is viewable in the dashboard with the ability to undo any suppression
 - [ ] **SUPP-05**: API supports PATCH /api/v1/alerts/:alert_id with action "suppress" or "resolve"
 
 ### Storage
@@ -169,13 +169,13 @@
 ### Frontend Dashboard
 
 - [x] **UI-01**: Live connections table with columns: Time, App, Domain, Country, IP, Port, Protocol, Flag
-- [ ] **UI-02**: Alerts panel displaying active alerts with severity color coding (WARNING=yellow, ALERT=orange, CRITICAL=red)
+- [x] **UI-02**: Alerts panel displaying active alerts with severity color coding (WARNING=yellow, ALERT=orange, CRITICAL=red)
 - [ ] **UI-03**: Chart: connections per app (bar or donut) — using Recharts
 - [ ] **UI-04**: Chart: connections per second over time (line chart, rolling 60s window) — using Recharts
 - [ ] **UI-05**: Capture status indicator showing whether sniffing is active and which capture method is in use (eBPF/libpcap)
 - [x] **UI-06**: Frontend connects to WebSocket and updates table/charts on each batch push (delta updates only, no full DOM re-render)
-- [ ] **UI-07**: Dashboard has a pause/resume toggle that halts live UI updates for inspection without disconnecting the WebSocket
-- [ ] **UI-08**: Alerts panel supports suppress and resolve actions per alert
+- [x] **UI-07**: Dashboard has a pause/resume toggle that halts live UI updates for inspection without disconnecting the WebSocket
+- [x] **UI-08**: Alerts panel supports suppress and resolve actions per alert
 - [ ] **UI-09**: Allowlist Manager screen: view all rules, add new rules (process/domain/IP scoped), delete rules
 - [x] **UI-10**: Dashboard reconnects to WebSocket with exponential backoff (max 30s) and shows a connection status indicator
 - [x] **UI-11**: Built with React 18 / Next.js 14 — served from the same Docker Compose stack
@@ -274,7 +274,7 @@
 | SUPP-01 | Phase 4 | Pending |
 | SUPP-02 | Phase 4 | Pending |
 | SUPP-03 | Phase 5 | Pending |
-| SUPP-04 | Phase 6 | Pending |
+| SUPP-04 | Phase 6 | Complete |
 | SUPP-05 | Phase 5 | Pending |
 | STORE-01 | Phase 5 | Pending |
 | STORE-02 | Phase 5 | Pending |
@@ -330,13 +330,13 @@
 | SYS-03 | Phase 3 | Pending |
 | SYS-04 | Phase 5 | Pending |
 | UI-01 | Phase 6 | Complete |
-| UI-02 | Phase 6 | Pending |
+| UI-02 | Phase 6 | Complete |
 | UI-03 | Phase 6 | Pending |
 | UI-04 | Phase 6 | Pending |
 | UI-05 | Phase 6 | Pending |
 | UI-06 | Phase 6 | Complete |
-| UI-07 | Phase 6 | Pending |
-| UI-08 | Phase 6 | Pending |
+| UI-07 | Phase 6 | Complete |
+| UI-08 | Phase 6 | Complete |
 | UI-09 | Phase 6 | Pending |
 | UI-10 | Phase 6 | Complete |
 | UI-11 | Phase 6 | Complete |
