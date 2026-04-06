@@ -18,9 +18,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Process Attribution** - Enrich captured packets with originating process name and PID using a psutil polling cache (completed 2026-04-04)
 > **PRD Upgrade Note (2026-04-04):** The PRD was upgraded to a production-grade system. Phases 1-2 remain valid. Phases 3-7 have been restructured to reflect: PostgreSQL storage, GeoIP/ASN/threat-intel enrichment, 10 detection rules with allowlist suppression, React/Next.js 14 frontend, JWT auth, and Docker Compose deployment with Prometheus/Grafana observability.
 
-- [ ] **Phase 3: Enrichment Service** - Resolve destination IPs to domain names, country, ASN; check against a local threat intelligence blocklist; all enrichment non-blocking with hard timeouts
-- [ ] **Phase 4: Detection Engine** - Apply 10 rule-based detection rules (DET-01 to DET-10) against fully enriched events; structured alerts; allowlist check before firing; per-rule rate limiting
-- [ ] **Phase 5: Data Store and Backend API** - Persist events to PostgreSQL; versioned FastAPI REST (/api/v1/) with JWT auth, pagination, rate limiting, allowlist CRUD, alert suppression, WebSocket live stream
+- [x] **Phase 3: Enrichment Service** - Resolve destination IPs to domain names, country, ASN; check against a local threat intelligence blocklist; all enrichment non-blocking with hard timeouts (completed 2026-04-05)
+- [x] **Phase 4: Detection Engine** - Apply 10 rule-based detection rules (DET-01 to DET-10) against fully enriched events; structured alerts; allowlist check before firing; per-rule rate limiting (completed 2026-04-05)
+- [x] **Phase 5: Data Store and Backend API** - Persist events to PostgreSQL; versioned FastAPI REST (/api/v1/) with JWT auth, pagination, rate limiting, allowlist CRUD, alert suppression, WebSocket live stream (completed 2026-04-05)
 - [ ] **Phase 6: Frontend Dashboard** - React 18 / Next.js 14 dashboard; live connections table, alerts panel with suppress/resolve, Recharts charts, Allowlist Manager screen
 - [ ] **Phase 7: Deployment & Observability** - Docker Compose stack; Prometheus metrics; Grafana dashboards; health endpoints; 10,000 events/sec load test
 
@@ -73,9 +73,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Thread pool DNS resolver with TTL+LRU cache (DNS-01 to DNS-06)
-- [ ] 03-02-PLAN.md — GeoIP + ASN enrichment with MaxMind GeoLite2 (GEO-01 to GEO-05)
-- [ ] 03-03-PLAN.md — Threat intel blocklist + wire all enrichment into pipeline (THREAT-01 to THREAT-05, SYS-03)
+- [x] 03-01-PLAN.md — Thread pool DNS resolver with TTL+LRU cache (DNS-01 to DNS-06)
+- [x] 03-02-PLAN.md — GeoIP + ASN enrichment with MaxMind GeoLite2 (GEO-01 to GEO-05)
+- [x] 03-03-PLAN.md — Threat intel blocklist + wire all enrichment into pipeline (THREAT-01 to THREAT-05, SYS-03)
 
 ### Phase 4: Detection Engine
 **Goal**: Fully enriched connection events are evaluated against 10 detection rules (DET-01 to DET-10: unknown domain, rate spike, unusual port, unknown process, blocklisted IP, TOR exit node, new destination discovery); the allowlist is checked before any alert is emitted; alert flooding is rate-limited to 1 per rule per process per second
@@ -95,8 +95,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 04-01: Detection rule implementations DET-01 to DET-07, DET-09 using named constants from config; in-memory first-seen tracker for DET-07
-- [ ] 04-02: Per-rule per-process rate limiter (DET-09), structured alert object construction with all fields (DET-10), allowlist pre-check (ALLOW-02 to ALLOW-04), in-memory suppression store (SUPP-01, SUPP-02)
+- [x] 04-01: Detection rule implementations DET-01 to DET-07, DET-09 using named constants from config; in-memory first-seen tracker for DET-07
+- [x] 04-02: Per-rule per-process rate limiter (DET-09), structured alert object construction with all fields (DET-10), allowlist pre-check (ALLOW-02 to ALLOW-04), in-memory suppression store (SUPP-01, SUPP-02)
 
 ### Phase 5: Data Store and Backend API
 **Goal**: Connection and alert events are persisted to PostgreSQL with indexed tables; NDJSON files serve as append-only audit logs; FastAPI exposes versioned REST endpoints (/api/v1/) with JWT authentication, pagination, allowlist CRUD, and alert suppression; WebSocket batches updates every 500ms; graceful shutdown flushes in-memory state to disk
@@ -115,9 +115,9 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 05-01: PostgreSQL schema (connections, alerts, processes, allowlist, suppressions tables) with indexes; NDJSON log writer with rotation; OBS-04 metrics logger
-- [ ] 05-02: JWT auth (login endpoint, token validation middleware, password bcrypt hashing); all REST endpoints under /api/v1/ with pagination and filters
-- [ ] 05-03: WebSocket manager (/api/v1/ws/live) with 500ms batch timer, client filter support, slow-client drop, graceful shutdown flush; TEST-02 synthetic load generator; SYS-02/SYS-04 reliability
+- [x] 05-01: PostgreSQL schema (connections, alerts, processes, allowlist, suppressions tables) with indexes; NDJSON log writer with rotation; OBS-04 metrics logger
+- [x] 05-02: JWT auth (login endpoint, token validation middleware, password bcrypt hashing); all REST endpoints under /api/v1/ with pagination and filters
+- [x] 05-03: WebSocket manager (/api/v1/ws/live) with 500ms batch timer, client filter support, slow-client drop, graceful shutdown flush; TEST-02 synthetic load generator; SYS-02/SYS-04 reliability
 **UI hint**: no
 
 ### Phase 6: Frontend Dashboard
@@ -136,7 +136,7 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 06-01: Next.js 14 project scaffold with Bootstrap 5 layout; live connections table component with delta-update row injection; WebSocket client with exponential backoff reconnect (UI-01, UI-06, UI-07, UI-10, UI-11)
+- [x] 06-01: Next.js 14 project scaffold with Bootstrap 5 layout; live connections table component with delta-update row injection; WebSocket client with exponential backoff reconnect (UI-01, UI-06, UI-07, UI-10, UI-11)
 - [ ] 06-02: Alerts panel component with severity color coding, Suppress and Resolve actions wired to API; pause/resume toggle (UI-02, UI-07, UI-08, SUPP-04)
 - [ ] 06-03: Recharts connections-per-app bar/donut chart; connections-per-second rolling line chart; capture status indicator; Allowlist Manager screen (UI-03, UI-04, UI-05, UI-09)
 **UI hint**: yes
@@ -171,10 +171,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 |-------|----------------|--------|-----------|
 | 1. Capture Foundation | 3/3 | Complete   | 2026-04-01 |
 | 2. Process Attribution | 2/2 | Complete   | 2026-04-04 |
-| 3. Enrichment Service | 0/3 | Not started | - |
-| 4. Detection Engine | 0/2 | Not started | - |
-| 5. Data Store and Backend API | 0/3 | Not started | - |
-| 6. Frontend Dashboard | 0/3 | Not started | - |
+| 3. Enrichment Service | 3/3 | Complete | 2026-04-05 |
+| 4. Detection Engine | 2/2 | Complete | 2026-04-05 |
+| 5. Data Store and Backend API | 3/3 | Complete   | 2026-04-05 |
+| 6. Frontend Dashboard | 1/3 | In Progress|  |
 | 7. Deployment & Observability | 0/3 | Not started | - |
 
 **Total:** 107 requirements across 7 phases, 19 plans
