@@ -1,20 +1,37 @@
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useCallback, useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useWebSocket } from '../hooks/useWebSocket';
 import LoginPage from '../components/LoginPage';
 import WsStatusIndicator from '../components/WsStatusIndicator';
+import CaptureStatus from '../components/CaptureStatus';
 import ConnectionsTable from '../components/ConnectionsTable';
 import AlertsPanel from '../components/AlertsPanel';
 import type { ConnectionEvent, AlertEvent } from '../lib/types';
 import type { WsBatchPayload } from '../hooks/useWebSocket';
 import { apiAlerts } from '../lib/api';
 
+// Dynamic imports for Recharts components (no SSR — window must exist)
+const ConnectionsPerApp = dynamic(
+  () => import('../components/ConnectionsPerApp'),
+  { ssr: false }
+);
+
+const ConnectionsPerSecond = dynamic(
+  () => import('../components/ConnectionsPerSecond'),
+  { ssr: false }
+);
+
 export default function Dashboard() {
   const { token, needsSetup, loading, error, login, setup, logout } = useAuth();
 
   // --- Connections state ---
   const [pendingConnections, setPendingConnections] = useState<ConnectionEvent[]>([]);
+  // Chart connections buffer — capped at 500 for chart consumption
+  const [connections, setConnections] = useState<ConnectionEvent[]>([]);
+  const [latestBatchSize, setLatestBatchSize] = useState(0);
 
   // --- Alerts state (owned by index.tsx per plan ownership decision) ---
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
@@ -33,11 +50,13 @@ export default function Dashboard() {
   }, [token]);
 
   const handleBatch = useCallback((payload: WsBatchPayload) => {
-    const connections = payload.connections ?? [];
+    const newConns = payload.connections ?? [];
     const newAlerts = payload.alerts ?? [];
 
-    if (connections.length > 0) {
-      setPendingConnections(connections);
+    if (newConns.length > 0) {
+      setPendingConnections(newConns);
+      setConnections(prev => [...newConns, ...prev].slice(0, 500));
+      setLatestBatchSize(newConns.length);
     }
     if (newAlerts.length > 0) {
       setAlerts(prev => [...newAlerts, ...prev].slice(0, 200));
@@ -84,7 +103,7 @@ export default function Dashboard() {
         style={{ backgroundColor: 'var(--bs-navbar-bg, #161b22)' }}
         aria-label="Main navigation"
       >
-        <div className="d-flex align-items-center gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
           <span
             style={{ fontSize: '1.4rem' }}
             role="img"
@@ -92,11 +111,18 @@ export default function Dashboard() {
           >
             &#128737;
           </span>
-          <span className="navbar-brand mb-0 h5 fw-semibold text-light me-3">PNPG</span>
+          <span className="navbar-brand mb-0 h5 fw-semibold text-light me-2">PNPG</span>
           <WsStatusIndicator status={status} />
+          <CaptureStatus token={token} />
         </div>
 
-        <div className="d-flex gap-2">
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Link
+            href="/allowlist"
+            className="btn btn-sm btn-outline-secondary"
+          >
+            Allowlist
+          </Link>
           <button
             className={`btn btn-sm ${isPaused ? 'btn-warning' : 'btn-outline-secondary'}`}
             onClick={handlePauseToggle}
@@ -133,10 +159,11 @@ export default function Dashboard() {
 
       {/* Main content */}
       <main
-        className="container-fluid py-3"
+        className="container-fluid px-4 py-3"
         style={{ backgroundColor: 'var(--bs-body-bg, #0d1117)', minHeight: 'calc(100vh - 56px)' }}
       >
-        <div className="row g-3">
+        {/* Row 1: Alerts (col-4) + Connections Table (col-8) */}
+        <div className="row g-3 mb-3">
           {/* Alerts Panel — col-4 */}
           <div className="col-12 col-lg-4">
             <div
@@ -184,8 +211,43 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Charts, AllowlistManager added in 06-03 */}
+        {/* Row 2: Charts (col-6 each) */}
+        <div className="row g-3">
+          {/* Connections per App */}
+          <div className="col-12 col-lg-6">
+            <div
+              className="card border-secondary"
+              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
+            >
+              <div className="card-header border-secondary py-2">
+                <span className="text-secondary small fw-semibold text-uppercase">
+                  Connections per App
+                </span>
+              </div>
+              <div className="card-body p-2">
+                <ConnectionsPerApp connections={connections} />
+              </div>
+            </div>
+          </div>
+
+          {/* Connections per Second */}
+          <div className="col-12 col-lg-6">
+            <div
+              className="card border-secondary"
+              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
+            >
+              <div className="card-header border-secondary py-2">
+                <span className="text-secondary small fw-semibold text-uppercase">
+                  Connections per Second (rolling 60s)
+                </span>
+              </div>
+              <div className="card-body p-2">
+                <ConnectionsPerSecond batchCount={latestBatchSize} />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
     </>
