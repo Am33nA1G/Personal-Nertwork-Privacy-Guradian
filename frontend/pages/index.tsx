@@ -1,32 +1,71 @@
 import Head from 'next/head';
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useWebSocket } from '../hooks/useWebSocket';
 import LoginPage from '../components/LoginPage';
 import WsStatusIndicator from '../components/WsStatusIndicator';
 import ConnectionsTable from '../components/ConnectionsTable';
-import type { ConnectionEvent } from '../lib/types';
+import AlertsPanel from '../components/AlertsPanel';
+import type { ConnectionEvent, AlertEvent } from '../lib/types';
 import type { WsBatchPayload } from '../hooks/useWebSocket';
+import { apiAlerts } from '../lib/api';
 
 export default function Dashboard() {
   const { token, needsSetup, loading, error, login, setup, logout } = useAuth();
+
+  // --- Connections state ---
   const [pendingConnections, setPendingConnections] = useState<ConnectionEvent[]>([]);
+
+  // --- Alerts state (owned by index.tsx per plan ownership decision) ---
+  const [alerts, setAlerts] = useState<AlertEvent[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+
+  // --- Pause/Resume state ---
   const isPausedRef = useRef(false);
   const pausedBufferRef = useRef<ConnectionEvent[]>([]);
+  const pausedAlertBufferRef = useRef<AlertEvent[]>([]);
   const [isPaused, setIsPaused] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Initial alerts fetch — runs after token is available
+  useEffect(() => {
+    if (!token) return;
+    setAlertsLoading(true);
+    setAlertsError(null);
+    apiAlerts(token, 'active')
+      .then(res => setAlerts(res?.data ?? []))
+      .catch(() => setAlertsError('Failed to load alerts'))
+      .finally(() => setAlertsLoading(false));
+  }, [token]);
 
   const handleBatch = useCallback((payload: WsBatchPayload) => {
     const connections = payload.connections ?? [];
-    if (connections.length === 0) return;
+    const newAlerts = payload.alerts ?? [];
 
     if (isPausedRef.current) {
-      // Buffer while paused (cap buffer at 500 to avoid unbounded growth)
-      pausedBufferRef.current = [
-        ...pausedBufferRef.current,
-        ...connections,
-      ].slice(-500);
+      // Buffer while paused (cap at 500 to prevent unbounded growth)
+      if (connections.length > 0) {
+        pausedBufferRef.current = [
+          ...pausedBufferRef.current,
+          ...connections,
+        ].slice(-500);
+      }
+      if (newAlerts.length > 0) {
+        pausedAlertBufferRef.current = [
+          ...pausedAlertBufferRef.current,
+          ...newAlerts,
+        ].slice(-200);
+      }
+      const total = pausedBufferRef.current.length + pausedAlertBufferRef.current.length;
+      setPendingCount(total);
     } else {
-      setPendingConnections(connections);
+      if (connections.length > 0) {
+        setPendingConnections(connections);
+      }
+      if (newAlerts.length > 0) {
+        setAlerts(prev => [...newAlerts, ...prev].slice(0, 200));
+      }
     }
   }, []);
 
@@ -37,11 +76,23 @@ export default function Dashboard() {
     isPausedRef.current = nowPaused;
     setIsPaused(nowPaused);
 
-    if (!nowPaused && pausedBufferRef.current.length > 0) {
+    if (!nowPaused) {
       // Flush buffered events on resume
-      setPendingConnections([...pausedBufferRef.current]);
-      pausedBufferRef.current = [];
+      if (pausedBufferRef.current.length > 0) {
+        setPendingConnections([...pausedBufferRef.current]);
+        pausedBufferRef.current = [];
+      }
+      if (pausedAlertBufferRef.current.length > 0) {
+        const flushed = [...pausedAlertBufferRef.current];
+        setAlerts(prev => [...flushed, ...prev].slice(0, 200));
+        pausedAlertBufferRef.current = [];
+      }
+      setPendingCount(0);
     }
+  }
+
+  function handleAlertActioned(alertId: string) {
+    setAlerts(prev => prev.filter(a => a.alert_id !== alertId));
   }
 
   if (!token) {
@@ -59,7 +110,7 @@ export default function Dashboard() {
   return (
     <>
       <Head>
-        <title>PNPG \u2014 Network Privacy Guardian</title>
+        <title>PNPG &mdash; Network Privacy Guardian</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
@@ -101,13 +152,56 @@ export default function Dashboard() {
         </div>
       </nav>
 
+      {/* Paused banner */}
+      {isPaused && (
+        <div
+          className="alert alert-warning m-0 rounded-0 text-center py-1 small"
+          role="status"
+        >
+          &#9888; Updates paused &mdash; {pendingCount} events buffered.
+          <button
+            className="btn btn-sm btn-warning ms-2 py-0"
+            onClick={handlePauseToggle}
+          >
+            Resume
+          </button>
+        </div>
+      )}
+
       {/* Main content */}
       <main
         className="container-fluid py-3"
         style={{ backgroundColor: 'var(--bs-body-bg, #0d1117)', minHeight: 'calc(100vh - 56px)' }}
       >
         <div className="row g-3">
-          <div className="col-12">
+          {/* Alerts Panel — col-4 */}
+          <div className="col-12 col-lg-4">
+            <div
+              className="card border-secondary h-100"
+              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
+            >
+              <div className="card-header border-secondary py-2">
+                <span className="text-secondary small fw-semibold text-uppercase">
+                  Active Alerts
+                </span>
+                {alerts.length > 0 && (
+                  <span className="badge bg-danger ms-2">{alerts.length}</span>
+                )}
+              </div>
+              <div className="card-body p-0">
+                <AlertsPanel
+                  alerts={alerts}
+                  isInitialLoading={alertsLoading}
+                  initialError={alertsError}
+                  token={token}
+                  onAlertActioned={handleAlertActioned}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Live Connections Table — col-8 */}
+          <div className="col-12 col-lg-8">
             <div
               className="card border-secondary"
               style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
@@ -118,7 +212,7 @@ export default function Dashboard() {
                 </span>
                 {isPaused && (
                   <span className="badge bg-warning text-dark small">
-                    Paused \u2014 buffering events
+                    Paused &mdash; buffering events
                   </span>
                 )}
               </div>
@@ -127,7 +221,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          {/* Charts, AlertsPanel, AllowlistManager added in 06-02 and 06-03 */}
+
+          {/* Charts, AllowlistManager added in 06-03 */}
         </div>
       </main>
     </>
