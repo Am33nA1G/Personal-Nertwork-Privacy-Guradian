@@ -13,17 +13,52 @@ const WS_BASE = 'ws://127.0.0.1:8001';
 export function useWebSocket(
   token: string | null,
   onBatch: (payload: WsBatchPayload) => void
-): { status: WsStatus; ws: React.MutableRefObject<WebSocket | null> } {
+): {
+  status: WsStatus;
+  ws: React.MutableRefObject<WebSocket | null>;
+  isPaused: boolean;
+  pendingCount: number;
+  pause: () => void;
+  resume: () => void;
+} {
   const [status, setStatus] = useState<WsStatus>('disconnected');
+  const [isPaused, setIsPaused] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
   const wsRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onBatchRef = useRef(onBatch);
 
+  // Pause state refs for use inside ws.onmessage closure
+  const isPausedRef = useRef(false);
+  const pendingRef = useRef<WsBatchPayload[]>([]);
+
   // Keep the callback ref current without re-triggering the effect
   useEffect(() => {
     onBatchRef.current = onBatch;
   }, [onBatch]);
+
+  const pause = useCallback(() => {
+    isPausedRef.current = true;
+    setIsPaused(true);
+  }, []);
+
+  const resume = useCallback(() => {
+    isPausedRef.current = false;
+    setIsPaused(false);
+    if (pendingRef.current.length > 0) {
+      const buffered = pendingRef.current.slice();
+      pendingRef.current = [];
+      setPendingCount(0);
+      // Merge all buffered payloads into a single batch call
+      const merged: WsBatchPayload = {
+        connections: buffered.flatMap(p => p.connections ?? []),
+        alerts: buffered.flatMap(p => p.alerts ?? []),
+      };
+      onBatchRef.current(merged);
+    }
+  }, []);
 
   const connect = useCallback(() => {
     if (!token) return;
@@ -48,10 +83,21 @@ export function useWebSocket(
       try {
         const msg = JSON.parse(event.data as string);
         if (msg.type === 'batch') {
-          onBatchRef.current({
+          const payload: WsBatchPayload = {
             connections: msg.events ?? [],
             alerts: msg.alerts ?? [],
-          });
+          };
+          if (isPausedRef.current) {
+            // Buffer while paused (cap at 500 payloads to avoid unbounded growth)
+            pendingRef.current = [...pendingRef.current, payload].slice(-500);
+            const count = pendingRef.current.reduce(
+              (acc, p) => acc + (p.connections?.length ?? 0) + (p.alerts?.length ?? 0),
+              0
+            );
+            setPendingCount(count);
+          } else {
+            onBatchRef.current(payload);
+          }
         }
         // heartbeat — ignore
       } catch {
@@ -110,5 +156,5 @@ export function useWebSocket(
     };
   }, [token, connect]);
 
-  return { status, ws: wsRef };
+  return { status, ws: wsRef, isPaused, pendingCount, pause, resume };
 }
