@@ -153,32 +153,34 @@ async def test_supervisor_graceful_stop():
 # ---------------------------------------------------------------------------
 
 
+def _make_scapy_import_patcher(sniff_mock=None):
+    """Return a (fake_import, sniff_mock) pair for stubbing out scapy.all imports."""
+    if sniff_mock is None:
+        sniff_mock = mock.MagicMock()
+
+    def fake_import(name, *args, **kwargs):
+        if name == "scapy.all":
+            scapy_mod = mock.MagicMock()
+            scapy_mod.sniff = sniff_mock
+            return scapy_mod
+        return __import__(name, *args, **kwargs)
+
+    return fake_import, sniff_mock
+
+
 def test_sniffer_target_calls_sniff():
     """_sniffer_target calls scapy sniff with the expected arguments."""
     import threading
-    from unittest.mock import MagicMock, patch
     from pnpg.capture.sniffer import _sniffer_target
 
     stop_event = threading.Event()
     stop_event.set()  # Immediately stop
 
-    mock_sniff = MagicMock()
-    packet_handler = MagicMock()
+    packet_handler = mock.MagicMock()
+    fake_import, mock_sniff = _make_scapy_import_patcher()
 
-    with patch.dict("sys.modules", {"scapy.all": MagicMock(sniff=mock_sniff)}):
-        with patch("pnpg.capture.sniffer.sniff", mock_sniff, create=True):
-            # Patch the import inside the function
-            with patch("builtins.__import__", wraps=__import__) as mock_import:
-                scapy_mock = MagicMock()
-                scapy_mock.sniff = mock_sniff
-
-                def fake_import(name, *args, **kwargs):
-                    if name == "scapy.all":
-                        return scapy_mock
-                    return __import__(name, *args, **kwargs)
-
-                mock_import.side_effect = fake_import
-                _sniffer_target("eth0", packet_handler, stop_event)
+    with mock.patch("builtins.__import__", side_effect=fake_import):
+        _sniffer_target("eth0", packet_handler, stop_event)
 
     mock_sniff.assert_called_once()
     call_kwargs = mock_sniff.call_args[1]
@@ -196,14 +198,12 @@ def test_sniffer_target_handles_exception(caplog):
     stop_event = threading.Event()
     packet_handler = lambda p: None
 
-    with mock.patch("builtins.__import__") as mock_import:
-        def fake_import(name, *args, **kwargs):
-            if name == "scapy.all":
-                raise RuntimeError("Scapy not available")
-            return __import__(name, *args, **kwargs)
+    def fake_import_raise(name, *args, **kwargs):
+        if name == "scapy.all":
+            raise RuntimeError("Scapy not available")
+        return __import__(name, *args, **kwargs)
 
-        mock_import.side_effect = fake_import
-
+    with mock.patch("builtins.__import__", side_effect=fake_import_raise):
         with caplog.at_level(logging.CRITICAL, logger="pnpg.capture.sniffer"):
             _sniffer_target("eth0", packet_handler, stop_event)
 
@@ -219,17 +219,9 @@ def test_start_sniffer_returns_daemon_thread():
     stop_event.set()  # Stop immediately so _sniffer_target returns quickly
     packet_handler = mock.MagicMock()
 
-    # Patch the scapy sniff so _sniffer_target returns without actually sniffing
-    with mock.patch("builtins.__import__") as mock_import:
-        def fake_import(name, *args, **kwargs):
-            if name == "scapy.all":
-                scapy_mod = mock.MagicMock()
-                scapy_mod.sniff = mock.MagicMock()
-                return scapy_mod
-            return __import__(name, *args, **kwargs)
+    fake_import, _ = _make_scapy_import_patcher()
 
-        mock_import.side_effect = fake_import
-
+    with mock.patch("builtins.__import__", side_effect=fake_import):
         thread = start_sniffer("eth0", packet_handler, stop_event)
 
     assert isinstance(thread, threading.Thread)
