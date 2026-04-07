@@ -138,3 +138,152 @@ async def test_heartbeat_sends_message():
     ws.send_json.assert_awaited()
     payload = ws.send_json.await_args.args[0]
     assert payload["type"] == "heartbeat"
+
+
+@pytest.mark.asyncio
+async def test_start_creates_background_tasks():
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+
+    await manager.start()
+
+    assert manager._batch_task is not None
+    assert not manager._batch_task.done()
+    assert manager._heartbeat_task is not None
+    assert not manager._heartbeat_task.done()
+
+    # Cleanup
+    await manager.stop()
+
+
+@pytest.mark.asyncio
+async def test_start_idempotent():
+    """Calling start() twice reuses existing tasks if they are still running."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    await manager.start()
+    first_batch_task = manager._batch_task
+
+    await manager.start()
+
+    assert manager._batch_task is first_batch_task
+
+    await manager.stop()
+
+
+@pytest.mark.asyncio
+async def test_stop_cancels_tasks_and_closes_clients():
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    await manager.start()
+    await manager.connect(ws)
+    assert manager.client_count == 1
+
+    await manager.stop()
+
+    assert manager._batch_task is None
+    assert manager._heartbeat_task is None
+    assert manager.client_count == 0
+    ws.close.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stop_handles_ws_close_error():
+    """stop() continues even when ws.close() raises."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    ws.close.side_effect = RuntimeError("already closed")
+    await manager.start()
+    await manager.connect(ws)
+
+    await manager.stop()  # Must not raise
+
+    assert manager.client_count == 0
+
+
+@pytest.mark.asyncio
+async def test_broadcast_filter_no_matching_conns_no_alerts_skips():
+    """broadcast with process filter: no matching connections and no alerts — client skipped."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    await manager.connect(ws)
+    manager.set_filter(ws, {"process": "chrome.exe"})
+
+    await manager.broadcast(
+        {"connections": [{"process_name": "firefox.exe"}], "alerts": []}
+    )
+
+    # Nothing should be enqueued because filter excluded all connections and no alerts
+    assert len(manager._clients[ws]["queue"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_broadcast_filter_with_alerts_passes():
+    """broadcast with process filter: no matching connections but there are alerts — payload passed."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    await manager.connect(ws)
+    manager.set_filter(ws, {"process": "chrome.exe"})
+
+    await manager.broadcast(
+        {
+            "connections": [{"process_name": "firefox.exe"}],
+            "alerts": [{"alert_id": "1"}],
+        }
+    )
+
+    assert len(manager._clients[ws]["queue"]) == 1
+    queued = manager._clients[ws]["queue"][0]
+    assert queued["alerts"] == [{"alert_id": "1"}]
+    assert queued["connections"] == []
+
+
+@pytest.mark.asyncio
+async def test_broadcast_filter_matching_connection_passes():
+    """broadcast with process filter: matching connection is included in payload."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    await manager.connect(ws)
+    manager.set_filter(ws, {"process": "chrome.exe"})
+
+    await manager.broadcast(
+        {
+            "connections": [
+                {"process_name": "chrome.exe"},
+                {"process_name": "firefox.exe"},
+            ],
+            "alerts": [],
+        }
+    )
+
+    assert len(manager._clients[ws]["queue"]) == 1
+    queued = manager._clients[ws]["queue"][0]
+    assert len(queued["connections"]) == 1
+    assert queued["connections"][0]["process_name"] == "chrome.exe"
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_drops_failed_client():
+    """_heartbeat_once removes clients that fail to receive the heartbeat."""
+    from pnpg.ws.manager import WsManager
+
+    manager = WsManager()
+    ws = _make_ws()
+    ws.send_json.side_effect = RuntimeError("dead")
+    await manager.connect(ws)
+
+    await manager._heartbeat_once()
+
+    assert manager.client_count == 0
