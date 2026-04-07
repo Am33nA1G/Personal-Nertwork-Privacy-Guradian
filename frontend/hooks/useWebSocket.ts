@@ -83,9 +83,14 @@ export function useWebSocket(
       try {
         const msg = JSON.parse(event.data as string);
         if (msg.type === 'batch') {
+          // WsManager batches payload objects into events[]:
+          //   { type:'batch', events: [ {connections:[...], alerts:[...]}, ... ] }
+          // Each element is a broadcast payload, not a raw connection event.
+          const payloadItems: { connections?: ConnectionEvent[]; alerts?: AlertEvent[] }[] =
+            Array.isArray(msg.events) ? msg.events : [];
           const payload: WsBatchPayload = {
-            connections: msg.events ?? [],
-            alerts: msg.alerts ?? [],
+            connections: payloadItems.flatMap(p => p.connections ?? []),
+            alerts: payloadItems.flatMap(p => p.alerts ?? []),
           };
           if (isPausedRef.current) {
             // Buffer while paused (cap at 500 payloads to avoid unbounded growth)

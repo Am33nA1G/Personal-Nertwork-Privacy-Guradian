@@ -6,10 +6,19 @@ interface Props {
   token: string;
 }
 
-type StatusState = 'loading' | 'active' | 'unreachable';
+type State = 'loading' | 'active' | 'unreachable';
+
+function formatUptime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
 
 export default function CaptureStatus({ token }: Props) {
-  const [state, setState] = useState<StatusState>('loading');
+  const [state, setState] = useState<State>('loading');
   const [statusData, setStatusData] = useState<CaptureStatusData | null>(null);
 
   useEffect(() => {
@@ -19,8 +28,9 @@ export default function CaptureStatus({ token }: Props) {
       try {
         const res = await apiStatus(token);
         if (cancelled) return;
-        if (res?.capture === 'running') {
-          setStatusData(res as CaptureStatusData);
+        const data = res?.data ?? res;
+        if (data?.capture === 'running') {
+          setStatusData(data as CaptureStatusData);
           setState('active');
         } else {
           setState('unreachable');
@@ -31,51 +41,44 @@ export default function CaptureStatus({ token }: Props) {
     }
 
     poll();
-    const id = setInterval(poll, 5_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
+    const id = setInterval(poll, 1_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, [token]);
 
   if (state === 'loading') {
     return (
-      <span className="d-inline-flex align-items-center gap-1 text-secondary small">
-        <span
-          className="spinner-border spinner-border-sm"
-          role="status"
-          aria-label="Checking capture status"
-        />
+      <span className="status-pill pill-connecting" role="status" aria-label="Checking capture status">
+        <span className="status-dot" />
+        <span>Checking…</span>
       </span>
     );
   }
 
   if (state === 'unreachable') {
     return (
-      <span className="badge bg-danger d-inline-flex align-items-center gap-1" title="Backend unreachable">
-        <span aria-hidden="true">&#10005;</span>
-        <span>Backend unreachable</span>
+      <span className="status-pill pill-offline" title="Backend unreachable">
+        <span className="status-dot" />
+        <span>Backend offline</span>
       </span>
     );
   }
 
-  // state === 'active'
   const probeType = statusData?.probe_type ?? 'scapy';
-  const uptime = statusData?.uptime != null
-    ? `${Math.floor(statusData.uptime / 60)}m ${Math.floor(statusData.uptime % 60)}s`
-    : null;
+  const uptime = statusData?.uptime != null ? formatUptime(statusData.uptime) : null;
 
   return (
-    <span className="d-inline-flex align-items-center gap-1">
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       <span
-        className="badge bg-success d-inline-flex align-items-center gap-1"
+        className="status-pill pill-capture"
         title={`Probe: ${probeType}`}
+        role="status"
+        aria-label={`Capture active — ${probeType}`}
       >
-        <span aria-hidden="true">&#9679;</span>
-        <span>Active ({probeType})</span>
+        <span className="status-dot" />
+        <span>{probeType}</span>
       </span>
       {uptime && (
-        <span className="text-secondary small font-monospace" aria-label={`Uptime: ${uptime}`}>
+        <span className="uptime-tag" aria-label={`Uptime: ${uptime}`}>
           {uptime}
         </span>
       )}

@@ -1,12 +1,7 @@
 import { useMemo } from 'react';
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
+  ResponsiveContainer, BarChart, Bar,
+  XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 import type { ConnectionEvent } from '../lib/types';
 
@@ -14,17 +9,21 @@ interface Props {
   connections: ConnectionEvent[];
 }
 
-const DARK_TOOLTIP_STYLE = {
-  backgroundColor: '#1a1a2e',
-  border: '1px solid #30363d',
-  color: '#c9d1d9',
-  fontSize: '0.8rem',
+const GRID_COLOR   = 'rgba(255,255,255,0.05)';
+const AXIS_COLOR   = 'rgba(255,255,255,0.06)';
+const TICK_STYLE   = { fill: '#445068', fontSize: 11, fontFamily: 'var(--font-sans, Inter, sans-serif)' };
+const TOOLTIP_STYLE = {
+  background: '#111827',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 8,
+  color: '#eef2ff',
+  fontSize: 12,
+  fontFamily: 'var(--font-sans, Inter, sans-serif)',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
 };
 
-const TICK_STYLE = { fill: '#8b949e', fontSize: '0.75rem' };
-
-function truncate(name: string, max = 20): string {
-  return name.length > max ? name.slice(0, max - 1) + '\u2026' : name;
+function truncate(s: string, max = 18): string {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
 
 export default function ConnectionsPerApp({ connections }: Props) {
@@ -42,34 +41,41 @@ export default function ConnectionsPerApp({ connections }: Props) {
 
   if (data.length === 0) {
     return (
-      <p className="text-muted text-center py-3 mb-0 small">No connection data yet</p>
+      <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: '0.76rem', color: 'var(--tx-3)' }}>No connection data yet</span>
+      </div>
     );
   }
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <BarChart data={data} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#30363d" vertical={false} />
+      <BarChart data={data} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
         <XAxis
           dataKey="name"
           tick={TICK_STYLE}
-          axisLine={{ stroke: '#30363d' }}
+          axisLine={{ stroke: AXIS_COLOR }}
           tickLine={false}
           interval={0}
         />
         <YAxis
           tick={TICK_STYLE}
-          axisLine={{ stroke: '#30363d' }}
+          axisLine={{ stroke: AXIS_COLOR }}
           tickLine={false}
-          width={32}
+          width={30}
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={DARK_TOOLTIP_STYLE}
-          cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+          contentStyle={TOOLTIP_STYLE}
+          cursor={{ fill: 'rgba(99,102,241,0.07)' }}
           formatter={(value: number) => [value, 'Connections']}
         />
-        <Bar dataKey="count" fill="#58a6ff" radius={[2, 2, 0, 0]} />
+        <Bar
+          dataKey="count"
+          fill="#6366f1"
+          radius={[3, 3, 0, 0]}
+          maxBarSize={40}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

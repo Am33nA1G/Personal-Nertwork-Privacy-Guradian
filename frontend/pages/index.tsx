@@ -9,11 +9,15 @@ import WsStatusIndicator from '../components/WsStatusIndicator';
 import CaptureStatus from '../components/CaptureStatus';
 import ConnectionsTable from '../components/ConnectionsTable';
 import AlertsPanel from '../components/AlertsPanel';
-import type { ConnectionEvent, AlertEvent } from '../lib/types';
+import ThreatsPanel from '../components/ThreatsPanel';
+import {
+  ShieldIcon, PauseIcon, PlayIcon, LogOutIcon,
+  ListIcon, AlertTriangleIcon, ZapIcon, ActivityIcon,
+} from '../lib/icons';
+import type { ConnectionEvent, AlertEvent, ThreatEvent } from '../lib/types';
 import type { WsBatchPayload } from '../hooks/useWebSocket';
-import { apiAlerts } from '../lib/api';
+import { apiAlerts, apiThreats } from '../lib/api';
 
-// Dynamic imports for Recharts components (no SSR — window must exist)
 const ConnectionsPerApp = dynamic(
   () => import('../components/ConnectionsPerApp'),
   { ssr: false }
@@ -27,18 +31,20 @@ const ConnectionsPerSecond = dynamic(
 export default function Dashboard() {
   const { token, needsSetup, loading, error, login, setup, logout } = useAuth();
 
-  // --- Connections state ---
   const [pendingConnections, setPendingConnections] = useState<ConnectionEvent[]>([]);
-  // Chart connections buffer — capped at 500 for chart consumption
   const [connections, setConnections] = useState<ConnectionEvent[]>([]);
   const [latestBatchSize, setLatestBatchSize] = useState(0);
 
-  // --- Alerts state (owned by index.tsx per plan ownership decision) ---
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [alertsError, setAlertsError] = useState<string | null>(null);
 
-  // Initial alerts fetch — runs after token is available
+  const [threats, setThreats] = useState<ThreatEvent[]>([]);
+  const [threatsLoading, setThreatsLoading] = useState(false);
+  const [threatsError, setThreatsError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'alerts' | 'threats'>('alerts');
+
   useEffect(() => {
     if (!token) return;
     setAlertsLoading(true);
@@ -47,6 +53,16 @@ export default function Dashboard() {
       .then(res => setAlerts(res?.data ?? []))
       .catch(() => setAlertsError('Failed to load alerts'))
       .finally(() => setAlertsLoading(false));
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    setThreatsLoading(true);
+    setThreatsError(null);
+    apiThreats(token, 'active')
+      .then(res => setThreats(res?.data ?? []))
+      .catch(() => setThreatsError('Failed to load threats'))
+      .finally(() => setThreatsLoading(false));
   }, [token]);
 
   const handleBatch = useCallback((payload: WsBatchPayload) => {
@@ -66,15 +82,15 @@ export default function Dashboard() {
   const { status, isPaused, pendingCount, pause, resume } = useWebSocket(token, handleBatch);
 
   function handlePauseToggle() {
-    if (isPaused) {
-      resume();
-    } else {
-      pause();
-    }
+    if (isPaused) resume(); else pause();
   }
 
   function handleAlertActioned(alertId: string) {
     setAlerts(prev => prev.filter(a => a.alert_id !== alertId));
+  }
+
+  function handleThreatActioned(threatId: string) {
+    setThreats(prev => prev.filter(t => t.threat_id !== threatId));
   }
 
   if (!token) {
@@ -89,161 +105,230 @@ export default function Dashboard() {
     );
   }
 
+  const hasAlerts  = alerts.length > 0;
+  const hasThreats = threats.length > 0;
+
   return (
     <>
       <Head>
-        <title>PNPG &mdash; Network Privacy Guardian</title>
+        <title>PNPG — Network Privacy Guardian</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* Navbar */}
-      <nav
-        className="navbar navbar-dark px-3 py-2 border-bottom border-secondary"
-        style={{ backgroundColor: 'var(--bs-navbar-bg, #161b22)' }}
-        aria-label="Main navigation"
-      >
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <span
-            style={{ fontSize: '1.4rem' }}
-            role="img"
-            aria-label="shield"
-          >
-            &#128737;
-          </span>
-          <span className="navbar-brand mb-0 h5 fw-semibold text-light me-2">PNPG</span>
-          <WsStatusIndicator status={status} />
-          <CaptureStatus token={token} />
+      {/* ── Navbar ── */}
+      <nav className="pnpg-nav" aria-label="Main navigation">
+        <div className="pnpg-nav-left">
+          {/* Brand */}
+          <div className="pnpg-nav-brand">
+            <ShieldIcon className="pnpg-nav-logo" size={26} />
+            <span className="pnpg-nav-wordmark">PNPG</span>
+          </div>
+
+          <div className="pnpg-nav-divider" />
+
+          {/* Status pills */}
+          <div className="pnpg-nav-status">
+            <WsStatusIndicator status={status} />
+            <CaptureStatus token={token} />
+          </div>
         </div>
 
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <Link
-            href="/allowlist"
-            className="btn btn-sm btn-outline-secondary"
-          >
+        {/* Actions */}
+        <div className="pnpg-nav-actions">
+          <Link href="/allowlist" className="btn-pnpg btn-ghost-dim" style={{ gap: 5 }}>
+            <ListIcon size={13} />
             Allowlist
           </Link>
+
           <button
-            className={`btn btn-sm ${isPaused ? 'btn-warning' : 'btn-outline-secondary'}`}
+            className={`btn-pnpg ${isPaused ? 'btn-paused' : 'btn-ghost'}`}
             onClick={handlePauseToggle}
             aria-pressed={isPaused}
             aria-label={isPaused ? 'Resume live updates' : 'Pause live updates'}
           >
-            {isPaused ? '\u25b6 Resume' : '\u23f8 Pause'}
+            {isPaused ? (
+              <>
+                <PlayIcon size={12} />
+                Resume
+                {pendingCount > 0 && (
+                  <span style={{
+                    fontSize: '0.62rem',
+                    background: 'rgba(0,0,0,0.25)',
+                    borderRadius: '100px',
+                    padding: '1px 6px',
+                    fontWeight: 700,
+                  }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <PauseIcon size={12} />
+                Pause
+              </>
+            )}
           </button>
+
           <button
-            className="btn btn-sm btn-outline-danger"
+            className="btn-pnpg btn-danger-pnpg"
             onClick={logout}
-            aria-label="Logout"
+            aria-label="Sign out"
           >
-            Logout
+            <LogOutIcon size={13} />
+            Sign out
           </button>
         </div>
       </nav>
 
-      {/* Paused banner */}
+      {/* ── Paused banner ── */}
       {isPaused && (
-        <div
-          className="alert alert-warning m-0 rounded-0 text-center py-1 small"
-          role="status"
-        >
-          &#9888; Updates paused &mdash; {pendingCount} events buffered.
-          <button
-            className="btn btn-sm btn-warning ms-2 py-0"
-            onClick={resume}
-          >
+        <div className="pause-banner" role="status">
+          <PauseIcon size={12} />
+          <span>Live updates paused — <strong>{pendingCount}</strong> events buffered</span>
+          <button className="btn-pnpg btn-warning-solid" onClick={resume} style={{ padding: '3px 10px', fontSize: '0.72rem' }}>
+            <PlayIcon size={11} />
             Resume
           </button>
         </div>
       )}
 
-      {/* Main content */}
-      <main
-        className="container-fluid px-4 py-3"
-        style={{ backgroundColor: 'var(--bs-body-bg, #0d1117)', minHeight: 'calc(100vh - 56px)' }}
-      >
-        {/* Row 1: Alerts (col-4) + Connections Table (col-8) */}
+      {/* ── Main ── */}
+      <main className="pnpg-main">
+
+        {/* KPI Strip */}
+        <div className="kpi-strip">
+          <div className="kpi-card">
+            <span className="kpi-label">Connections</span>
+            <span className="kpi-value">{connections.length}</span>
+            <span className="kpi-sub">last 500 buffered</span>
+          </div>
+
+          <div className="kpi-card">
+            <span className="kpi-label">Active Alerts</span>
+            <span className={`kpi-value ${hasAlerts ? 'kpi-danger' : ''}`}>
+              {alerts.length}
+            </span>
+            <span className="kpi-sub">{hasAlerts ? 'require attention' : 'all clear'}</span>
+          </div>
+
+          <div className="kpi-card">
+            <span className="kpi-label">Active Threats</span>
+            <span className={`kpi-value ${hasThreats ? 'kpi-danger' : ''}`}>
+              {threats.length}
+            </span>
+            <span className="kpi-sub">{hasThreats ? 'action needed' : 'none detected'}</span>
+          </div>
+
+          <div className="kpi-card">
+            <span className="kpi-label">Batch Rate</span>
+            <span className={`kpi-value ${latestBatchSize > 0 ? 'kpi-live' : ''}`}>
+              {latestBatchSize}
+            </span>
+            <span className="kpi-sub">events / batch</span>
+          </div>
+        </div>
+
+        {/* Row 1: Alert/Threat tabs + Live Connections */}
         <div className="row g-3 mb-3">
-          {/* Alerts Panel — col-4 */}
+
+          {/* Alert / Threat tabs — col-4 */}
           <div className="col-12 col-lg-4">
-            <div
-              className="card border-secondary h-100"
-              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
-            >
-              <div className="card-header border-secondary py-2">
-                <span className="text-secondary small fw-semibold text-uppercase">
-                  Active Alerts
-                </span>
-                {alerts.length > 0 && (
-                  <span className="badge bg-danger ms-2">{alerts.length}</span>
-                )}
+            <div className="panel-card" style={{ height: 480 }}>
+              {/* Tabs header */}
+              <div className="pnpg-tabs" role="tablist">
+                <button
+                  role="tab"
+                  aria-selected={activeTab === 'alerts'}
+                  className={`pnpg-tab ${activeTab === 'alerts' ? 'tab-active' : ''}`}
+                  onClick={() => setActiveTab('alerts')}
+                >
+                  <AlertTriangleIcon size={13} />
+                  Alerts
+                  {alerts.length > 0 && (
+                    <span className="tab-count">{alerts.length}</span>
+                  )}
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={activeTab === 'threats'}
+                  className={`pnpg-tab ${activeTab === 'threats' ? 'tab-active' : ''}`}
+                  onClick={() => setActiveTab('threats')}
+                >
+                  <ZapIcon size={13} />
+                  Threats
+                  {threats.length > 0 && (
+                    <span className="tab-count">{threats.length}</span>
+                  )}
+                </button>
               </div>
-              <div className="card-body p-0">
-                <AlertsPanel
-                  alerts={alerts}
-                  isInitialLoading={alertsLoading}
-                  initialError={alertsError}
-                  token={token}
-                  onAlertActioned={handleAlertActioned}
-                />
+
+              {/* Tab content */}
+              <div className="panel-body" style={{ overflowY: 'auto' }}>
+                {activeTab === 'alerts' && (
+                  <AlertsPanel
+                    alerts={alerts}
+                    isInitialLoading={alertsLoading}
+                    initialError={alertsError}
+                    token={token}
+                    onAlertActioned={handleAlertActioned}
+                  />
+                )}
+                {activeTab === 'threats' && (
+                  <ThreatsPanel
+                    threats={threats}
+                    isInitialLoading={threatsLoading}
+                    initialError={threatsError}
+                    token={token}
+                    onThreatActioned={handleThreatActioned}
+                  />
+                )}
               </div>
             </div>
           </div>
 
-          {/* Live Connections Table — col-8 */}
+          {/* Live Connections — col-8 */}
           <div className="col-12 col-lg-8">
-            <div
-              className="card border-secondary"
-              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
-            >
-              <div className="card-header border-secondary d-flex align-items-center justify-content-between py-2">
-                <span className="text-secondary small fw-semibold text-uppercase">
+            <div className="panel-card" style={{ height: 480 }}>
+              <div className="panel-header">
+                <span className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ActivityIcon size={13} />
                   Live Connections
                 </span>
                 {isPaused && (
-                  <span className="badge bg-warning text-dark small">
-                    Paused &mdash; {pendingCount} buffered
+                  <span className="status-pill pill-connecting">
+                    <span className="status-dot" />
+                    Paused — {pendingCount} buffered
                   </span>
                 )}
               </div>
-              <div className="card-body p-0">
+              <div className="panel-body" style={{ overflow: 'hidden' }}>
                 <ConnectionsTable newEvents={pendingConnections} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Row 2: Charts (col-6 each) */}
+        {/* Row 2: Charts */}
         <div className="row g-3">
-          {/* Connections per App */}
           <div className="col-12 col-lg-6">
-            <div
-              className="card border-secondary"
-              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
-            >
-              <div className="card-header border-secondary py-2">
-                <span className="text-secondary small fw-semibold text-uppercase">
-                  Connections per App
-                </span>
+            <div className="panel-card">
+              <div className="panel-header">
+                <span className="panel-title">Connections per App</span>
               </div>
-              <div className="card-body p-2">
+              <div style={{ padding: '8px 4px 4px' }}>
                 <ConnectionsPerApp connections={connections} />
               </div>
             </div>
           </div>
 
-          {/* Connections per Second */}
           <div className="col-12 col-lg-6">
-            <div
-              className="card border-secondary"
-              style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
-            >
-              <div className="card-header border-secondary py-2">
-                <span className="text-secondary small fw-semibold text-uppercase">
-                  Connections per Second (rolling 60s)
-                </span>
+            <div className="panel-card">
+              <div className="panel-header">
+                <span className="panel-title">Connection Rate — rolling 60s</span>
               </div>
-              <div className="card-body p-2">
+              <div style={{ padding: '8px 4px 4px' }}>
                 <ConnectionsPerSecond batchCount={latestBatchSize} />
               </div>
             </div>

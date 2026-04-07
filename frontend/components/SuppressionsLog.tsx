@@ -1,25 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Suppression } from '../lib/types';
 import { apiGetSuppressions, apiDeleteSuppression } from '../lib/api';
+import { RotateCcwIcon, EyeOffIcon } from '../lib/icons';
 
 interface Props {
   token: string;
 }
 
 export default function SuppressionsLog({ token }: Props) {
-  const [suppressions, setSuppressions] = useState<Suppression[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [undoStates, setUndoStates] = useState<Record<string, { pending: boolean; error: string | null }>>({});
+  const [suppressions, setSuppressions]   = useState<Suppression[]>([]);
+  const [loading, setLoading]             = useState(false);
+  const [fetchError, setFetchError]       = useState<string | null>(null);
+  const [undoStates, setUndoStates]       = useState<Record<string, { pending: boolean; error: string | null }>>({});
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     setFetchError(null);
     apiGetSuppressions(token)
       .then(res => setSuppressions(res?.data ?? []))
       .catch(() => setFetchError('Failed to load suppressions'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }
+
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUndo = useCallback(
     async (suppressionId: string) => {
@@ -27,90 +30,69 @@ export default function SuppressionsLog({ token }: Props) {
       try {
         const res = await apiDeleteSuppression(token, suppressionId);
         if (res?.success === false) {
-          setUndoStates(prev => ({
-            ...prev,
-            [suppressionId]: { pending: false, error: res.error ?? 'Undo failed' },
-          }));
+          setUndoStates(prev => ({ ...prev, [suppressionId]: { pending: false, error: res.error ?? 'Undo failed' } }));
         } else {
           setSuppressions(prev => prev.filter(s => s.suppression_id !== suppressionId));
-          setUndoStates(prev => {
-            const next = { ...prev };
-            delete next[suppressionId];
-            return next;
-          });
+          setUndoStates(prev => { const next = { ...prev }; delete next[suppressionId]; return next; });
         }
       } catch {
-        setUndoStates(prev => ({
-          ...prev,
-          [suppressionId]: { pending: false, error: 'Undo failed — try again' },
-        }));
+        setUndoStates(prev => ({ ...prev, [suppressionId]: { pending: false, error: 'Undo failed — try again' } }));
       }
     },
     [token]
   );
 
-  // Loading state: skeleton rows
+  /* Loading */
   if (loading) {
     return (
-      <div className="p-3">
-        <div className="placeholder-glow">
-          {[1, 2, 3].map(n => (
-            <div key={n} className="mb-2">
-              <span className="placeholder col-3 me-2" />
-              <span className="placeholder col-2 me-2" />
-              <span className="placeholder col-4" />
-            </div>
-          ))}
-        </div>
+      <div style={{ padding: 12 }}>
+        {[1, 2, 3].map(n => (
+          <div key={n} className="skeleton-row">
+            <div className="skeleton" style={{ width: 100, height: 14 }} />
+            <div className="skeleton" style={{ width: 80, height: 14 }} />
+            <div className="skeleton" style={{ width: 140, height: 14 }} />
+          </div>
+        ))}
         <span className="visually-hidden">Loading suppressions…</span>
       </div>
     );
   }
 
-  // Error state
   if (fetchError) {
     return (
-      <div className="p-3">
-        <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
-          <span>{fetchError}</span>
-          <button
-            className="btn btn-sm btn-outline-danger ms-auto"
-            onClick={() => {
-              setFetchError(null);
-              setLoading(true);
-              apiGetSuppressions(token)
-                .then(res => setSuppressions(res?.data ?? []))
-                .catch(() => setFetchError('Failed to load suppressions'))
-                .finally(() => setLoading(false));
-            }}
-          >
-            Retry
-          </button>
-        </div>
+      <div className="error-block" style={{ margin: 12 }} role="alert">
+        <span>{fetchError}</span>
+        <button
+          className="btn-pnpg btn-ghost"
+          style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: '0.72rem' }}
+          onClick={load}
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
-  // Empty state
   if (suppressions.length === 0) {
     return (
-      <div className="p-4 text-center text-secondary">
-        <p className="mb-0 small">No suppressions on record</p>
+      <div className="empty-state">
+        <EyeOffIcon className="empty-icon" size={28} />
+        <span className="empty-text">No suppressions on record</span>
       </div>
     );
   }
 
   return (
-    <div className="table-responsive">
-      <table className="table table-dark table-sm table-hover mb-0 small">
-        <thead className="border-secondary">
+    <div style={{ overflowX: 'auto' }}>
+      <table className="data-table">
+        <thead>
           <tr>
-            <th className="text-secondary fw-normal">Rule</th>
-            <th className="text-secondary fw-normal">Process</th>
-            <th className="text-secondary fw-normal">Scope</th>
-            <th className="text-secondary fw-normal">Reason</th>
-            <th className="text-secondary fw-normal">Created</th>
-            <th className="text-secondary fw-normal" />
+            <th>Rule</th>
+            <th>Process</th>
+            <th>Scope</th>
+            <th>Reason</th>
+            <th>Created</th>
+            <th style={{ width: 80 }} />
           </tr>
         </thead>
         <tbody>
@@ -120,36 +102,35 @@ export default function SuppressionsLog({ token }: Props) {
             const undoError = undoState?.error ?? null;
 
             return (
-              <tr key={s.suppression_id} className="align-middle">
-                <td className="font-monospace text-light">{s.rule_id ?? '—'}</td>
+              <tr key={s.suppression_id}>
+                <td className="td-mono td-primary">{s.rule_id ?? '—'}</td>
                 <td>{s.process_name ?? '—'}</td>
                 <td>
-                  <span className="badge bg-secondary">{s.scope}</span>
+                  <span className="scope-badge">{s.scope}</span>
                 </td>
-                <td className="text-secondary">{s.reason ?? '—'}</td>
-                <td className="text-secondary">
-                  {new Date(s.created_at).toLocaleString()}
-                </td>
+                <td className="td-muted">{s.reason ?? '—'}</td>
+                <td className="td-muted">{new Date(s.created_at).toLocaleString()}</td>
                 <td>
-                  <div className="d-flex align-items-center gap-2">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
-                      className="btn btn-outline-warning btn-sm py-0"
+                      className="btn-pnpg btn-warning-pnpg"
+                      style={{ padding: '4px 9px', fontSize: '0.7rem' }}
                       disabled={isPending}
                       onClick={() => handleUndo(s.suppression_id)}
-                      aria-label={`Undo suppression ${s.suppression_id}`}
+                      aria-label="Undo suppression"
+                      title="Undo suppression"
                     >
                       {isPending ? (
-                        <span
-                          className="spinner-border spinner-border-sm"
-                          role="status"
-                          aria-hidden="true"
-                        />
+                        <span className="spinner-xs" />
                       ) : (
-                        'Undo'
+                        <>
+                          <RotateCcwIcon size={12} />
+                          Undo
+                        </>
                       )}
                     </button>
                     {undoError && (
-                      <span className="text-danger small">{undoError}</span>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--sev-critical)' }}>{undoError}</span>
                     )}
                   </div>
                 </td>

@@ -34,6 +34,23 @@ export interface AlertEvent {
   suppressed: boolean;
 }
 
+export interface ThreatEvent {
+  threat_id: string;
+  detected_at: string;
+  severity: string;
+  threat_type: string;
+  process_name: string;
+  pid: number;
+  dst_ip: string;
+  dst_hostname: string | null;
+  reason: string;
+  confidence: number;
+  status: string;
+  remediation_status: string | null;
+  killed_at: string | null;
+  block_ip_at: string | null;
+}
+
 export interface AllowlistRule {
   rule_id: string;
   process_name: string | null;
@@ -82,6 +99,7 @@ export const SEVERITY_CLASSES: Record<string, string> = {
   ALERT:    'text-pnpg-alert',
   HIGH:     'text-pnpg-alert',
   CRITICAL: 'text-danger',
+  THREAT:   'text-danger',
 };
 
 export const SEVERITY_BADGE: Record<string, string> = {
@@ -91,4 +109,5 @@ export const SEVERITY_BADGE: Record<string, string> = {
   ALERT:    'bg-pnpg-alert text-dark',
   HIGH:     'bg-pnpg-alert text-dark',
   CRITICAL: 'bg-danger',
+  THREAT:   'bg-danger',
 };

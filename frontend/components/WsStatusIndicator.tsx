@@ -1,41 +1,32 @@
 import type { WsStatus } from '../hooks/useWebSocket';
 
-interface WsStatusIndicatorProps {
+interface Props {
   status: WsStatus;
 }
 
-export default function WsStatusIndicator({ status }: WsStatusIndicatorProps) {
+export default function WsStatusIndicator({ status }: Props) {
   if (status === 'connected') {
     return (
-      <span
-        className="badge bg-success"
-        aria-label="WebSocket connected"
-        role="status"
-      >
-        &#9679; Live
+      <span className="status-pill pill-live" role="status" aria-label="WebSocket connected">
+        <span className="status-dot" />
+        Live
       </span>
     );
   }
 
   if (status === 'connecting') {
     return (
-      <span
-        className="badge bg-warning text-dark"
-        aria-label="WebSocket connecting"
-        role="status"
-      >
-        &#8635; Connecting...
+      <span className="status-pill pill-connecting" role="status" aria-label="WebSocket connecting">
+        <span className="status-dot" />
+        Connecting
       </span>
     );
   }
 
   return (
-    <span
-      className="badge bg-danger"
-      aria-label="WebSocket disconnected"
-      role="status"
-    >
-      &#10005; Disconnected
+    <span className="status-pill pill-offline" role="status" aria-label="WebSocket disconnected">
+      <span className="status-dot" />
+      Disconnected
     </span>
   );
 }

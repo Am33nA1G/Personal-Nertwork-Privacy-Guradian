@@ -1,12 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
+  ResponsiveContainer, AreaChart, Area,
+  XAxis, YAxis, Tooltip, CartesianGrid,
 } from 'recharts';
 
 interface Props {
@@ -18,27 +13,29 @@ interface DataPoint {
   count: number;
 }
 
-const DARK_TOOLTIP_STYLE = {
-  backgroundColor: '#1a1a2e',
-  border: '1px solid #30363d',
-  color: '#c9d1d9',
-  fontSize: '0.8rem',
+const GRID_COLOR    = 'rgba(255,255,255,0.05)';
+const AXIS_COLOR    = 'rgba(255,255,255,0.06)';
+const TICK_STYLE    = { fill: '#445068', fontSize: 11, fontFamily: 'var(--font-sans, Inter, sans-serif)' };
+const TOOLTIP_STYLE = {
+  background: '#111827',
+  border: '1px solid rgba(255,255,255,0.09)',
+  borderRadius: 8,
+  color: '#eef2ff',
+  fontSize: 12,
+  fontFamily: 'var(--font-sans, Inter, sans-serif)',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
 };
 
-const TICK_STYLE = { fill: '#8b949e', fontSize: '0.75rem' };
-
 export default function ConnectionsPerSecond({ batchCount }: Props) {
-  const bufferRef = useRef<DataPoint[]>([]);
+  const bufferRef  = useRef<DataPoint[]>([]);
   const [chartData, setChartData] = useState<DataPoint[]>([]);
 
-  // Push new batch entry whenever batchCount changes
   useEffect(() => {
     if (batchCount > 0) {
       bufferRef.current = [...bufferRef.current, { ts: Date.now(), count: batchCount }];
     }
   }, [batchCount]);
 
-  // 1Hz interval: trim >60s entries and sync state
   useEffect(() => {
     const id = setInterval(() => {
       const cutoff = Date.now() - 60_000;
@@ -50,44 +47,53 @@ export default function ConnectionsPerSecond({ batchCount }: Props) {
 
   if (chartData.length === 0) {
     return (
-      <p className="text-muted text-center py-3 mb-0 small">Waiting for traffic data…</p>
+      <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: '0.76rem', color: 'var(--tx-3)' }}>Waiting for traffic…</span>
+      </div>
     );
   }
 
   return (
     <ResponsiveContainer width="100%" height={200}>
-      <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#30363d" vertical={false} />
+      <AreaChart data={chartData} margin={{ top: 4, right: 12, bottom: 4, left: 0 }}>
+        <defs>
+          <linearGradient id="liveGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="#10b981" stopOpacity={0.25} />
+            <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
         <XAxis
           dataKey="ts"
           tick={TICK_STYLE}
-          axisLine={{ stroke: '#30363d' }}
+          axisLine={{ stroke: AXIS_COLOR }}
           tickLine={false}
-          tickFormatter={(ts: number) => new Date(ts).toLocaleTimeString()}
+          tickFormatter={(ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           interval="preserveStartEnd"
         />
         <YAxis
           tick={TICK_STYLE}
-          axisLine={{ stroke: '#30363d' }}
+          axisLine={{ stroke: AXIS_COLOR }}
           tickLine={false}
-          width={32}
+          width={30}
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={DARK_TOOLTIP_STYLE}
-          cursor={{ stroke: '#58a6ff', strokeWidth: 1 }}
+          contentStyle={TOOLTIP_STYLE}
+          cursor={{ stroke: 'rgba(16,185,129,0.3)', strokeWidth: 1 }}
           labelFormatter={(ts: number) => new Date(ts).toLocaleTimeString()}
           formatter={(value: number) => [value, 'Events']}
         />
-        <Line
+        <Area
           type="monotone"
           dataKey="count"
-          stroke="#28a745"
+          stroke="#10b981"
           strokeWidth={2}
+          fill="url(#liveGradient)"
           dot={false}
           isAnimationActive={false}
         />
-      </LineChart>
+      </AreaChart>
     </ResponsiveContainer>
   );
 }

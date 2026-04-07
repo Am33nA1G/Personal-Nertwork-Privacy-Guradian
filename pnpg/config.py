@@ -40,6 +40,20 @@ DEFAULT_CONFIG: dict = {
         "node.exe",
         "code.exe",
     ],
+    "db_dsn": "postgresql://pnpg:pnpg@localhost:5432/pnpg",
+    "db_pool_min": 2,
+    "db_pool_max": 10,
+    "jwt_secret": "",
+    "jwt_expiry_hours": 8,
+    "ws_batch_interval_ms": 500,
+    "ws_max_batch_size": 100,
+    "ws_heartbeat_interval_s": 10,
+    "ndjson_max_size_mb": 100,
+    "retention_connections_days": 30,
+    "retention_alerts_days": 90,
+    "purge_schedule_hour": 2,
+    "api_rate_limit": "100/minute",
+    "auth_file": "data/auth.json",
 }
 
 

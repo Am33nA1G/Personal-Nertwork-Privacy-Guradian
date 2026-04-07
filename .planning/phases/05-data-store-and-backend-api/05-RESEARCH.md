@@ -792,9 +792,9 @@ def setup_rate_limiting(app: FastAPI) -> None:
 | AUTH-01 | POST /auth/login returns JWT with valid password | integration | `pytest tests/test_api/test_auth.py::test_login_success -x` | Wave 0 |
 | AUTH-01 | POST /auth/login returns 401 with wrong password | integration | `pytest tests/test_api/test_auth.py::test_login_fail -x` | Wave 0 |
 | AUTH-02 | Protected route returns 401 without token | integration | `pytest tests/test_api/test_auth.py::test_protected_no_token -x` | Wave 0 |
-| AUTH-03 | WebSocket closes with code 4001 on bad token | integration | `pytest tests/test_api/test_ws.py::test_ws_bad_token -x` | Wave 0 |
+| AUTH-03 | WebSocket closes with code 4001 on bad token | integration | `pytest tests/test_api/test_websocket.py::test_ws_bad_token -x` | Wave 0 |
 | API-01 | GET /connections returns paginated envelope | integration | `pytest tests/test_api/test_connections.py -x` | Wave 0 |
-| API-06 | WebSocket pushes batch within 600ms | integration | `pytest tests/test_api/test_ws.py::test_ws_batch_timing -x` | Wave 0 |
+| API-06 | WebSocket pushes batch within 600ms | integration | `pytest tests/test_api/test_websocket.py::test_ws_batch_timing -x` | Wave 0 |
 | API-08 | Broadcast loop survives client disconnect | unit | `pytest tests/test_ws/test_manager.py::test_broadcast_survives_disconnect -x` | Wave 0 |
 | API-10 | Slow client dropped after timeout | unit | `pytest tests/test_ws/test_manager.py::test_slow_client_dropped -x` | Wave 0 |
 | ALLOW-05 | POST /allowlist persists to DB and syncs DetectorState | integration | `pytest tests/test_api/test_allowlist.py -x` | Wave 0 |
@@ -804,15 +804,15 @@ def setup_rate_limiting(app: FastAPI) -> None:
 
 ### Sampling Rate
 
-- **Per task commit:** `pytest tests/test_storage/ tests/test_ws/ tests/test_api/ -x -q`
-- **Per wave merge:** `pytest tests/ -x -q`
+- **Per task commit:** `python -m pytest tests/test_storage/ tests/test_ws/ tests/test_api/ -x -q --basetemp .pytest_tmp/phase5`
+- **Per wave merge:** `python -m pytest tests/ -x -q --basetemp .pytest_tmp/full`
 - **Phase gate:** Full suite green before `/gsd:verify-work`
 
 ### Wave 0 Gaps
 
 - [ ] `tests/test_storage/` directory + `test_writer.py`, `test_ndjson.py`, `test_purge.py`
 - [ ] `tests/test_ws/test_manager.py` — WsManager unit tests
-- [ ] `tests/test_api/` directory + `test_auth.py`, `test_connections.py`, `test_alerts.py`, `test_allowlist.py`, `test_ws.py`, `test_health.py`
+- [ ] `tests/test_api/` directory + `test_auth.py`, `test_connections.py`, `test_alerts.py`, `test_allowlist.py`, `test_stats.py`, `test_websocket.py`, `test_health.py`, `test_shutdown.py`
 - [ ] `tools/load_generator.py` — TEST-02 synthetic traffic script
 - [ ] PostgreSQL test database: `createdb pnpg_test` with schema applied
 - [ ] Fixture: `conftest.py` additions — `db_pool` fixture (async, uses test DB or mock pool), `ws_manager` fixture, `auth_headers` fixture (valid JWT for protected route tests)

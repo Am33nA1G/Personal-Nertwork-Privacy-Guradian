@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AllowlistRule } from '../lib/types';
 import { apiGetAllowlist, apiCreateAllowlistRule, apiDeleteAllowlistRule } from '../lib/api';
+import { PlusIcon, Trash2Icon, XIcon, CheckCircleIcon } from '../lib/icons';
 
 interface Props {
   token: string;
@@ -23,14 +24,13 @@ const EMPTY_FORM: AddForm = {
 };
 
 export default function AllowlistManager({ token }: Props) {
-  const [rules, setRules] = useState<AllowlistRule[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [rules, setRules]         = useState<AllowlistRule[]>([]);
+  const [loading, setLoading]     = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [deleteStates, setDeleteStates] = useState<Record<string, { pending: boolean; error: string | null }>>({});
 
-  // Add form state
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<AddForm>(EMPTY_FORM);
+  const [showForm, setShowForm]   = useState(false);
+  const [form, setForm]           = useState<AddForm>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,9 +43,7 @@ export default function AllowlistManager({ token }: Props) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  useEffect(() => {
-    loadRules();
-  }, [loadRules]);
+  useEffect(() => { loadRules(); }, [loadRules]);
 
   const handleDelete = useCallback(
     async (ruleId: string) => {
@@ -53,23 +51,13 @@ export default function AllowlistManager({ token }: Props) {
       try {
         const res = await apiDeleteAllowlistRule(token, ruleId);
         if (res?.success === false) {
-          setDeleteStates(prev => ({
-            ...prev,
-            [ruleId]: { pending: false, error: res.error ?? 'Delete failed' },
-          }));
+          setDeleteStates(prev => ({ ...prev, [ruleId]: { pending: false, error: res.error ?? 'Delete failed' } }));
         } else {
           setRules(prev => prev.filter(r => r.rule_id !== ruleId));
-          setDeleteStates(prev => {
-            const next = { ...prev };
-            delete next[ruleId];
-            return next;
-          });
+          setDeleteStates(prev => { const next = { ...prev }; delete next[ruleId]; return next; });
         }
       } catch {
-        setDeleteStates(prev => ({
-          ...prev,
-          [ruleId]: { pending: false, error: 'Delete failed — try again' },
-        }));
+        setDeleteStates(prev => ({ ...prev, [ruleId]: { pending: false, error: 'Delete failed — try again' } }));
       }
     },
     [token]
@@ -82,10 +70,10 @@ export default function AllowlistManager({ token }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmedIp = form.dst_ip.trim();
-    const trimmedHost = form.dst_hostname.trim();
-    if (!trimmedIp && !trimmedHost) {
-      setFormError('At least one of Destination IP or Destination Hostname is required.');
+    const trimIp   = form.dst_ip.trim();
+    const trimHost = form.dst_hostname.trim();
+    if (!trimIp && !trimHost) {
+      setFormError('Destination IP or Hostname is required.');
       return;
     }
 
@@ -94,10 +82,10 @@ export default function AllowlistManager({ token }: Props) {
     try {
       const body: Record<string, string> = {};
       if (form.process_name.trim()) body.process_name = form.process_name.trim();
-      if (trimmedIp) body.dst_ip = trimmedIp;
-      if (trimmedHost) body.dst_hostname = trimmedHost;
-      if (form.expires_at.trim()) body.expires_at = form.expires_at.trim();
-      if (form.reason.trim()) body.reason = form.reason.trim();
+      if (trimIp)                   body.dst_ip       = trimIp;
+      if (trimHost)                 body.dst_hostname  = trimHost;
+      if (form.expires_at.trim())   body.expires_at   = form.expires_at.trim();
+      if (form.reason.trim())       body.reason        = form.reason.trim();
 
       const res = await apiCreateAllowlistRule(token, body);
       if (res?.success === false) {
@@ -116,120 +104,128 @@ export default function AllowlistManager({ token }: Props) {
     }
   }
 
-  // Loading skeleton
+  /* Loading */
   if (loading) {
     return (
-      <div className="p-3">
-        <div className="placeholder-glow">
-          {[1, 2, 3].map(n => (
-            <div key={n} className="mb-2">
-              <span className="placeholder col-2 me-2" />
-              <span className="placeholder col-3 me-2" />
-              <span className="placeholder col-4" />
-            </div>
-          ))}
-        </div>
+      <div style={{ padding: 12 }}>
+        {[1, 2, 3].map(n => (
+          <div key={n} className="skeleton-row">
+            <div className="skeleton" style={{ width: 80, height: 14 }} />
+            <div className="skeleton" style={{ width: 120, height: 14 }} />
+            <div className="skeleton" style={{ width: 160, height: 14 }} />
+          </div>
+        ))}
         <span className="visually-hidden">Loading allowlist rules…</span>
       </div>
     );
   }
 
-  // Error state
   if (fetchError) {
     return (
-      <div className="p-3">
-        <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
-          <span>{fetchError}</span>
-          <button
-            className="btn btn-sm btn-outline-danger ms-auto"
-            onClick={loadRules}
-          >
-            Retry
-          </button>
-        </div>
+      <div className="error-block" style={{ margin: 12 }} role="alert">
+        <span>{fetchError}</span>
+        <button className="btn-pnpg btn-ghost" style={{ marginLeft: 'auto', padding: '3px 10px', fontSize: '0.72rem' }} onClick={loadRules}>
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Add rule toggle */}
-      <div className="d-flex align-items-center justify-content-between p-3 pb-0">
-        <h6 className="mb-0 text-secondary small fw-semibold text-uppercase">Allowlist Rules</h6>
+      {/* Toolbar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 14px',
+        borderBottom: '1px solid var(--bd-1)',
+      }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--tx-3)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          {rules.length} rule{rules.length !== 1 ? 's' : ''}
+        </span>
         <button
-          className={`btn btn-sm ${showForm ? 'btn-outline-secondary' : 'btn-outline-success'}`}
-          onClick={() => {
-            setShowForm(v => !v);
-            setFormError(null);
-          }}
+          className={`btn-pnpg ${showForm ? 'btn-ghost' : 'btn-success-pnpg'}`}
+          onClick={() => { setShowForm(v => !v); setFormError(null); }}
+          style={{ padding: '5px 11px' }}
         >
-          {showForm ? 'Cancel' : '+ Add Rule'}
+          {showForm ? (
+            <>
+              <XIcon size={12} />
+              Cancel
+            </>
+          ) : (
+            <>
+              <PlusIcon size={13} />
+              Add Rule
+            </>
+          )}
         </button>
       </div>
 
-      {/* Add rule form (collapsible) */}
+      {/* Add form */}
       {showForm && (
-        <form className="p-3 border-bottom border-secondary" onSubmit={handleSubmit} noValidate>
+        <form className="al-form-area" onSubmit={handleSubmit} noValidate>
           <div className="row g-2">
             <div className="col-md-6">
-              <label className="form-label small text-secondary" htmlFor="al-process">
-                Process name <span className="text-muted">(optional)</span>
+              <label className="pnpg-label" htmlFor="al-process">
+                Process name <span className="pnpg-label-opt">(optional)</span>
               </label>
               <input
                 id="al-process"
                 type="text"
-                className="form-control form-control-sm bg-transparent text-light border-secondary"
+                className="pnpg-input"
                 placeholder="chrome.exe"
                 value={form.process_name}
                 onChange={e => handleFormChange('process_name', e.target.value)}
               />
             </div>
             <div className="col-md-6">
-              <label className="form-label small text-secondary" htmlFor="al-dst-ip">
-                Destination IP <span className="text-muted">(optional)</span>
+              <label className="pnpg-label" htmlFor="al-dst-ip">
+                Destination IP <span className="pnpg-label-opt">(optional)</span>
               </label>
               <input
                 id="al-dst-ip"
                 type="text"
-                className="form-control form-control-sm bg-transparent text-light border-secondary"
+                className="pnpg-input"
                 placeholder="1.2.3.4"
                 value={form.dst_ip}
                 onChange={e => handleFormChange('dst_ip', e.target.value)}
               />
             </div>
             <div className="col-md-6">
-              <label className="form-label small text-secondary" htmlFor="al-dst-host">
-                Destination hostname <span className="text-muted">(optional)</span>
+              <label className="pnpg-label" htmlFor="al-dst-host">
+                Destination hostname <span className="pnpg-label-opt">(optional)</span>
               </label>
               <input
                 id="al-dst-host"
                 type="text"
-                className="form-control form-control-sm bg-transparent text-light border-secondary"
+                className="pnpg-input"
                 placeholder="example.com"
                 value={form.dst_hostname}
                 onChange={e => handleFormChange('dst_hostname', e.target.value)}
               />
             </div>
             <div className="col-md-6">
-              <label className="form-label small text-secondary" htmlFor="al-expires">
-                Expires at <span className="text-muted">(optional)</span>
+              <label className="pnpg-label" htmlFor="al-expires">
+                Expires at <span className="pnpg-label-opt">(optional)</span>
               </label>
               <input
                 id="al-expires"
                 type="datetime-local"
-                className="form-control form-control-sm bg-transparent text-light border-secondary"
+                className="pnpg-input"
                 value={form.expires_at}
                 onChange={e => handleFormChange('expires_at', e.target.value)}
               />
             </div>
             <div className="col-12">
-              <label className="form-label small text-secondary" htmlFor="al-reason">
-                Reason <span className="text-muted">(optional)</span>
+              <label className="pnpg-label" htmlFor="al-reason">
+                Reason <span className="pnpg-label-opt">(optional)</span>
               </label>
               <input
                 id="al-reason"
                 type="text"
-                className="form-control form-control-sm bg-transparent text-light border-secondary"
+                className="pnpg-input"
                 placeholder="Known safe traffic"
                 value={form.reason}
                 onChange={e => handleFormChange('reason', e.target.value)}
@@ -238,82 +234,84 @@ export default function AllowlistManager({ token }: Props) {
           </div>
 
           {formError && (
-            <div className="alert alert-danger py-1 px-2 mt-2 small" role="alert">
+            <div className="error-block" style={{ marginTop: 10 }} role="alert">
               {formError}
             </div>
           )}
 
-          <button
-            type="submit"
-            className="btn btn-sm btn-success mt-2"
-            disabled={submitting}
-          >
-            {submitting ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
-                Adding…
-              </>
-            ) : (
-              'Add Rule'
-            )}
-          </button>
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="submit"
+              className="btn-pnpg btn-success-pnpg"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <span className="spinner-xs" />
+                  Adding…
+                </>
+              ) : (
+                <>
+                  <PlusIcon size={13} />
+                  Add Rule
+                </>
+              )}
+            </button>
+          </div>
         </form>
       )}
 
       {/* Rules table */}
       {rules.length === 0 ? (
-        <div className="p-4 text-center text-secondary">
-          <p className="mb-0 small">No rules — all traffic is evaluated</p>
+        <div className="empty-state">
+          <CheckCircleIcon className="empty-icon" size={28} />
+          <span className="empty-text">No rules — all traffic is evaluated</span>
         </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table table-dark table-sm table-hover mb-0 small">
-            <thead className="border-secondary">
+        <div style={{ overflowX: 'auto' }}>
+          <table className="data-table">
+            <thead>
               <tr>
-                <th className="text-secondary fw-normal">Process</th>
-                <th className="text-secondary fw-normal">Dest IP</th>
-                <th className="text-secondary fw-normal">Domain</th>
-                <th className="text-secondary fw-normal">Expires</th>
-                <th className="text-secondary fw-normal">Reason</th>
-                <th className="text-secondary fw-normal" />
+                <th>Process</th>
+                <th>Dest IP</th>
+                <th>Domain</th>
+                <th>Expires</th>
+                <th>Reason</th>
+                <th style={{ width: 60 }} />
               </tr>
             </thead>
             <tbody>
               {rules.map(rule => {
                 const delState = deleteStates[rule.rule_id];
                 const isPending = delState?.pending ?? false;
-                const delError = delState?.error ?? null;
+                const delError  = delState?.error ?? null;
                 return (
-                  <tr key={rule.rule_id} className="align-middle">
-                    <td>{rule.process_name ?? '—'}</td>
-                    <td className="font-monospace">{rule.dst_ip ?? '—'}</td>
+                  <tr key={rule.rule_id}>
+                    <td className="td-primary">{rule.process_name ?? '—'}</td>
+                    <td className="td-mono">{rule.dst_ip ?? '—'}</td>
                     <td>{rule.dst_hostname ?? '—'}</td>
-                    <td className="text-secondary">
-                      {rule.expires_at
-                        ? new Date(rule.expires_at).toLocaleString()
-                        : 'Never'}
+                    <td className="td-muted">
+                      {rule.expires_at ? new Date(rule.expires_at).toLocaleString() : 'Never'}
                     </td>
-                    <td className="text-secondary">{rule.reason ?? '—'}</td>
+                    <td className="td-muted">{rule.reason ?? '—'}</td>
                     <td>
-                      <div className="d-flex align-items-center gap-2">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button
-                          className="btn btn-outline-danger btn-sm py-0"
+                          className="btn-pnpg btn-danger-pnpg"
+                          style={{ padding: '4px 9px' }}
                           disabled={isPending}
                           onClick={() => handleDelete(rule.rule_id)}
-                          aria-label={`Delete allowlist rule ${rule.rule_id}`}
+                          aria-label={`Delete allowlist rule`}
+                          title="Delete rule"
                         >
                           {isPending ? (
-                            <span
-                              className="spinner-border spinner-border-sm"
-                              role="status"
-                              aria-hidden="true"
-                            />
+                            <span className="spinner-xs" />
                           ) : (
-                            'Delete'
+                            <Trash2Icon size={12} />
                           )}
                         </button>
                         {delError && (
-                          <span className="text-danger small">{delError}</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--sev-critical)' }}>{delError}</span>
                         )}
                       </div>
                     </td>

@@ -16,6 +16,7 @@ from pnpg.pipeline.dns_resolver import TtlLruCache, enrich_dns
 from pnpg.pipeline.geo_enricher import enrich_geo
 from pnpg.pipeline.process_mapper import enrich_event
 from pnpg.pipeline.threat_intel import check_threat_intel
+from pnpg.storage.writer import storage_writer
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ async def pipeline_worker(
     process_cache: dict,
     dns_cache: TtlLruCache,
     detector_state: DetectorState,
+    db_pool=None,
+    ndjson_writer=None,
+    ws_manager=None,
 ) -> None:
     """Consume packet events from the queue and route them through enrichment stages.
 
@@ -76,8 +80,24 @@ async def pipeline_worker(
             if alerts:
                 logger.info("Detection alerts: %s", [a["rule_id"] for a in alerts])
 
-            # Phase 5: storage_writer(event)
-            # Phase 5: websocket_push(event)
+            # Phase 5: Persist to PostgreSQL + NDJSON audit log (STORE-01..09)
+            if ndjson_writer is not None:
+                try:
+                    await storage_writer(event, alerts, db_pool, ndjson_writer)
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("storage_writer error: %s", exc, exc_info=True)
+
+            # Phase 5: Push to WebSocket live stream (API-06)
+            if ws_manager is not None:
+                try:
+                    await ws_manager.broadcast(
+                        {
+                            "connections": [event],
+                            "alerts": alerts,
+                        }
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("ws_manager.broadcast error: %s", exc, exc_info=True)
 
             if config.get("debug_mode"):
                 logger.debug("PIPELINE EVENT: %s", event)  # TEST-01

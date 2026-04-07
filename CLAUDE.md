@@ -9,11 +9,14 @@ A real-time network monitoring system that captures outgoing traffic from a user
 
 ### Constraints
 
-- **Privileges**: Admin/root required — Scapy needs raw socket access
-- **Tech Stack**: Python 3.10+, FastAPI, Scapy, psutil, socket, uvicorn; HTML/CSS/JS + Chart.js frontend — no framework changes
-- **Local Only**: No external network calls from the tool itself; all resolution is local DNS
-- **Storage**: JSON flat files for v1 — no database dependency
-- **Performance**: Detection rules must be lightweight enough to not block the sniff loop
+- **Privileges**: Admin/root required — Scapy/libpcap needs raw socket access; Linux eBPF requires CAP_BPF + CAP_PERFMON
+- **Tech Stack**: Python 3.11+, FastAPI, Scapy, psutil, socket, uvicorn; React 18 / Next.js 14 + Recharts frontend — no framework substitutions
+- **Local Only**: No external network calls from the tool itself; all enrichment uses local databases (GeoIP, threat intel blocklist)
+- **Storage**: PostgreSQL 15+ as primary store; NDJSON flat files as audit log — no SQLite
+- **Stream layer**: asyncio bounded queue (current) → Redis Streams (MVP) → Kafka (V1+)
+- **Auth**: JWT (HS256, 8h expiry) on all API endpoints; single-user local auth only
+- **Performance**: ≥10,000 events/sec sustained with <2% drop; p95 end-to-end latency <100ms
+- **Deployment**: Docker Compose for MVP; Kubernetes for V1 production
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:research/STACK.md -->
@@ -43,15 +46,20 @@ A real-time network monitoring system that captures outgoing traffic from a user
 ### Frontend Layer
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Vanilla HTML/CSS/JS | — | UI shell | Correct for this scope. No framework needed; adding React/Vue would add build tooling complexity with zero benefit for a single-page local tool. |
-| Chart.js | 4.x | Data visualization (connections/sec, per-app usage) | The right choice. Lightweight, zero-dependency CDN delivery, well-documented canvas-based charts. Version 4.x (not 3.x) — breaking changes between 3 and 4 include dataset configuration structure. Use CDN: `https://cdn.jsdelivr.net/npm/chart.js@4`. |
-| Bootstrap | 5.3.x (optional) | UI component styling | Listed as optional in PRD. Use it — the time savings on table/alert styling are real and the CDN delivery keeps zero build steps. Bootstrap 5 (not 4) — no jQuery dependency. |
-| Native WebSocket API | Browser built-in | Real-time connection to `/ws/live` | Correct. The browser `WebSocket` constructor is all that is needed; no `socket.io` or similar library required. |
+| ~~Vanilla HTML/CSS/JS~~ **React 18** | 18.x | UI framework | **CHANGED (PRD upgrade 2026-04-04):** Allowlist Manager + alert suppress/resolve + GeoIP columns require component architecture; Vanilla JS is no longer adequate |
+| ~~Chart.js~~ **Recharts** | 2.x | Data visualization | **CHANGED:** Recharts is React-native; simpler integration than Chart.js when already in a React app |
+| Bootstrap | 5.3.x | UI component styling | Use via npm (not CDN) in the Next.js project. Bootstrap 5 — no jQuery dependency. |
+| Next.js | 14.x | React framework + dev server | File-based routing; `next dev` server; serves the SPA locally |
+| Native WebSocket API | Browser built-in | Real-time connection to `/api/v1/ws/live` | No change — browser WebSocket constructor, exponential backoff reconnect |
 ### Data Storage Layer
+> **PRD Upgrade (2026-04-04):** Storage upgraded from JSON flat files to PostgreSQL 15+ as primary. NDJSON files retained as audit/fallback log. No SQLite.
+
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| Python in-memory list/dict | stdlib | Live connection buffer | Correct for v1. A `collections.deque(maxlen=N)` is better than a plain list for bounded circular logging — prevents unbounded memory growth under sustained traffic. |
-| JSON flat files | stdlib `json` module | Persistent log of connections and alerts | Correct for v1. Use append-mode logging with rotation logic or a size cap — naively growing a single JSON file will become unreadable quickly. Recommend writing newline-delimited JSON (NDJSON) rather than a single array, so log readers don't need to parse the entire file. |
+| PostgreSQL | 15+ | Primary event and alert storage | **CHANGED:** Required by PRD upgrade — supports indexed queries, 30-day retention with nightly purge, allowlist/suppression tables. Use `asyncpg` or `psycopg3` for async writes from FastAPI. |
+| Python in-memory deque | stdlib | Live connection buffer | `collections.deque(maxlen=N)` for bounded circular buffer — still needed as write-ahead buffer before DB flush |
+| NDJSON flat files | stdlib `json` module | Append-only audit log; graceful-shutdown flush | Retained as lightweight audit log and offline fallback. Append-mode with rotation (100MB cap). |
+| ClickHouse | optional | High-volume `connections` analytics | Use only when connection volume exceeds 1M events/day. Not needed for MVP. |
 ## Alternatives Considered
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
@@ -62,9 +70,9 @@ A real-time network monitoring system that captures outgoing traffic from a user
 | Backend framework | FastAPI | Flask | Flask is sync-first; WebSocket support requires `flask-socketio` + `gevent`, adding complexity. FastAPI's native async + WebSocket is cleaner. |
 | Backend framework | FastAPI | aiohttp | aiohttp is capable but has weaker DX, no auto-docs, and less ecosystem momentum in 2024-2025. |
 | ASGI server | uvicorn | hypercorn | uvicorn is the de facto standard for FastAPI; hypercorn is viable but less tested with FastAPI's WebSocket layer. |
-| Charts | Chart.js | D3.js | D3 is far more powerful but the learning curve is steep for a lab project. Chart.js covers bar, line, and doughnut charts needed here with minimal code. |
-| Charts | Chart.js | Plotly.js | Plotly is larger (3x the bundle size), better for scientific plots. Overkill for connections/sec and per-app usage. |
-| Frontend | Vanilla JS | React/Vue | Build tooling (Vite/webpack) adds complexity for zero benefit in a single-page local tool served from the filesystem. Vanilla JS with WebSocket is 20 lines. |
+| Charts | ~~Chart.js~~ **Recharts** | D3.js / Chart.js | **CHANGED (PRD upgrade):** Recharts integrates natively in React; Chart.js requires wrapper boilerplate in a React app |
+| Frontend | ~~Vanilla JS~~ **React 18 / Next.js 14** | Vanilla JS | **CHANGED (PRD upgrade):** Allowlist Manager + alert actions + GeoIP columns require component state management; Vanilla JS becomes unmanageable at this scope |
+| Storage | ~~JSON files~~ **PostgreSQL 15+** | SQLite | **CHANGED (PRD upgrade):** PRD now requires 30-day retention, indexed queries, allowlist table, suppressions table — PostgreSQL is the correct choice |
 ## Windows-Specific Considerations
 ### 1. Npcap is a hard prerequisite — not optional
 - `from scapy.all import sniff` will succeed (import works)
@@ -79,16 +87,16 @@ A real-time network monitoring system that captures outgoing traffic from a user
 ## PRD Validation — What to Keep, What to Change
 | PRD Decision | Verdict | Notes |
 |--------------|---------|-------|
-| Scapy for packet capture | KEEP | Correct. No better alternative for this use case. |
+| Scapy for packet capture | KEEP | Correct. No better alternative for this use case. libpcap fallback for Linux kernel <5.8. |
 | psutil for process mapping | KEEP | Correct. Wrap in try/except for AccessDenied on Windows. |
-| socket for DNS | KEEP with caveat | Must be run off the main thread. This is not optional — inline blocking DNS calls will stall the sniffer. |
-| FastAPI | KEEP | Correct. Use `lifespan` not `on_event` for startup. |
+| socket for DNS | KEEP with caveat | Must be run off the main thread. Blocking DNS calls stall the sniffer — non-negotiable. |
+| FastAPI | KEEP | Correct. Use `lifespan` not `on_event` for startup. All endpoints under /api/v1/ with JWT auth. |
 | uvicorn | KEEP | Use `uvicorn[standard]` not bare `uvicorn` to include websockets dependency. |
-| HTML/JS frontend | KEEP | Correct for scope. |
-| Chart.js | KEEP | Specify version 4.x, not 3.x. |
-| Bootstrap optional | RECOMMEND USING IT | Time savings on table/alert styling justify the CDN line. Zero build complexity. |
-| JSON flat file storage | KEEP | Use NDJSON (newline-delimited) not a single growing JSON array. Use `collections.deque` for in-memory buffer. |
-| No SQLite v1 | KEEP | Correct deferral. |
+| ~~HTML/JS frontend~~ React 18 / Next.js 14 | **CHANGE** | PRD upgrade: Allowlist Manager + alert actions require component architecture. Use Recharts, not Chart.js. |
+| ~~Chart.js~~ Recharts 2.x | **CHANGE** | React-native charting; use Recharts inside the Next.js app. |
+| Bootstrap | KEEP | Use via npm in Next.js project. Bootstrap 5 — no jQuery. |
+| ~~JSON flat file storage~~ PostgreSQL 15+ | **CHANGE** | PRD upgrade: PostgreSQL is primary; NDJSON retained as audit log. asyncpg or psycopg3 for async writes. |
+| No SQLite v1 | KEEP | Still correct — use PostgreSQL, not SQLite. |
 | requirements.txt without versions | CHANGE | Pin minimum versions (`>=`) to avoid pulling in breaking changes. |
 ## Confidence Assessment Summary
 | Area | Confidence | Reason |

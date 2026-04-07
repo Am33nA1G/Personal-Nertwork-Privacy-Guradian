@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { AlertEvent } from '../lib/types';
-import { SEVERITY_BADGE, SEVERITY_CLASSES } from '../lib/types';
 import { apiPatchAlert } from '../lib/api';
+import { CheckCircleIcon, EyeOffIcon, CheckIcon } from '../lib/icons';
 
 interface Props {
   alerts: AlertEvent[];
@@ -13,14 +13,37 @@ interface Props {
 
 type ActionState = { pending: boolean; error: string | null };
 
-const SEVERITY_BORDER: Record<string, string> = {
-  WARNING:  'var(--sev-warning, #ffc107)',
-  ALERT:    'var(--sev-alert, #fd7e14)',
-  HIGH:     'var(--sev-alert, #fd7e14)',
-  CRITICAL: 'var(--sev-critical, #dc3545)',
-  INFO:     'var(--bs-info, #0dcaf0)',
-  LOW:      'var(--bs-secondary, #6c757d)',
+/* Maps severity → CSS class used for .sev-badge and left bar color */
+const SEV_CLASS: Record<string, string> = {
+  INFO:     'sev-INFO',
+  LOW:      'sev-LOW',
+  WARNING:  'sev-WARNING',
+  ALERT:    'sev-ALERT',
+  HIGH:     'sev-HIGH',
+  CRITICAL: 'sev-CRITICAL',
+  THREAT:   'sev-THREAT',
 };
+
+const SEV_BAR_COLOR: Record<string, string> = {
+  INFO:     'var(--sev-info)',
+  LOW:      'var(--sev-low)',
+  WARNING:  'var(--sev-warning)',
+  ALERT:    'var(--sev-alert)',
+  HIGH:     'var(--sev-alert)',
+  CRITICAL: 'var(--sev-critical)',
+  THREAT:   'var(--sev-critical)',
+};
+
+function SeverityBar({ severity }: { severity: string }) {
+  const color = SEV_BAR_COLOR[severity] ?? 'var(--bd-2)';
+  return (
+    <div
+      className="ev-severity-bar"
+      style={{ background: color }}
+      aria-hidden="true"
+    />
+  );
+}
 
 export default function AlertsPanel({
   alerts,
@@ -52,23 +75,13 @@ export default function AlertsPanel({
     [token, onAlertActioned, setAlertState]
   );
 
-  // Loading state: skeleton cards
+  /* Loading skeleton */
   if (isInitialLoading) {
     return (
-      <div className="p-3">
+      <div style={{ padding: 10 }}>
         {[1, 2, 3].map(n => (
-          <div
-            key={n}
-            className="card border-secondary mb-2 placeholder-glow"
-            style={{ backgroundColor: 'var(--bs-card-bg, #161b22)' }}
-          >
-            <div className="card-body py-2 px-3">
-              <span className="placeholder col-4 me-2" />
-              <span className="placeholder col-6" />
-              <div className="mt-1">
-                <span className="placeholder col-8" />
-              </div>
-            </div>
+          <div key={n} style={{ marginBottom: 6 }}>
+            <div className="skeleton" style={{ height: 68, borderRadius: 10 }} />
           </div>
         ))}
         <span className="visually-hidden">Loading alerts…</span>
@@ -76,101 +89,97 @@ export default function AlertsPanel({
     );
   }
 
-  // Error state from parent's initial fetch
   if (initialError) {
     return (
-      <div className="p-3">
-        <div className="alert alert-danger d-flex align-items-center gap-2" role="alert">
-          <span>{initialError}</span>
-        </div>
+      <div className="error-block" style={{ margin: 12 }} role="alert">
+        {initialError}
       </div>
     );
   }
 
-  // Empty state
   if (alerts.length === 0) {
     return (
-      <div className="p-4 text-center text-secondary">
-        <span style={{ fontSize: '1.5rem' }} role="img" aria-label="checkmark">&#10003;</span>
-        <p className="mt-2 mb-0 small">No active alerts</p>
+      <div className="empty-state">
+        <CheckCircleIcon className="empty-icon" size={32} />
+        <span className="empty-text">No active alerts</span>
       </div>
     );
   }
 
   return (
-    <div
-      style={{ maxHeight: '420px', overflowY: 'auto' }}
-      className="p-2"
-    >
+    <div style={{ padding: 8 }}>
       {alerts.map(alert => {
         const alertState = actionStates[alert.alert_id];
-        const isPending = alertState?.pending ?? false;
+        const isPending  = alertState?.pending ?? false;
         const actionError = alertState?.error ?? null;
-        const borderColor = SEVERITY_BORDER[alert.severity] ?? 'var(--bs-secondary, #6c757d)';
-        const textClass = SEVERITY_CLASSES[alert.severity] ?? '';
-        const badgeClass = SEVERITY_BADGE[alert.severity] ?? 'bg-secondary';
+        const sevClass   = SEV_CLASS[alert.severity] ?? 'sev-LOW';
+        const dst        = alert.dst_hostname ?? alert.dst_ip;
 
         return (
-          <div
-            key={alert.alert_id}
-            className="card border-secondary mb-2"
-            style={{
-              backgroundColor: 'var(--bs-card-bg, #161b22)',
-              borderLeft: `4px solid ${borderColor}`,
-            }}
-          >
-            <div className="card-body py-2 px-3">
-              <div className="d-flex align-items-start justify-content-between gap-2">
-                <div className="flex-grow-1 min-width-0">
-                  <div className="d-flex align-items-center gap-2 mb-1">
-                    <span className={`badge ${badgeClass} small`}>
-                      {alert.severity}
-                    </span>
-                    <span className={`small fw-semibold ${textClass}`}>
-                      {alert.rule_id}
-                    </span>
-                    <span className="text-secondary small">
-                      {new Date(alert.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <div className="small text-light mb-1">{alert.reason}</div>
-                  <div className="small text-secondary">
-                    <span className="me-2">{alert.process_name}</span>
-                    {(alert.dst_hostname ?? alert.dst_ip) && (
-                      <span>&#8594; {alert.dst_hostname ?? alert.dst_ip}</span>
-                    )}
-                  </div>
-                  {actionError && (
-                    <span className="text-danger small mt-1 d-block">{actionError}</span>
+          <div key={alert.alert_id} className="ev-card">
+            <div className="ev-card-inner">
+              <SeverityBar severity={alert.severity} />
+
+              <div className="ev-body">
+                {/* Meta row */}
+                <div className="ev-meta">
+                  <span className={`sev-badge ${sevClass}`}>{alert.severity}</span>
+                  <span className="ev-rule">{alert.rule_id}</span>
+                  <span className="ev-time">
+                    {new Date(alert.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+
+                {/* Reason */}
+                <div className="ev-reason">{alert.reason}</div>
+
+                {/* Process → dest */}
+                <div className="ev-detail">
+                  <span className="ev-process">{alert.process_name}</span>
+                  {dst && (
+                    <>
+                      <span className="ev-arrow">→</span>
+                      <span className="ev-dest">{dst}</span>
+                    </>
                   )}
                 </div>
 
-                <div className="d-flex gap-1 flex-shrink-0">
-                  <button
-                    className="btn btn-outline-warning btn-sm"
-                    disabled={isPending}
-                    onClick={() => handleAction(alert.alert_id, 'suppress')}
-                    aria-label={`Suppress alert ${alert.alert_id}`}
-                  >
-                    {isPending ? (
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                    ) : (
-                      'Suppress'
-                    )}
-                  </button>
-                  <button
-                    className="btn btn-outline-success btn-sm"
-                    disabled={isPending}
-                    onClick={() => handleAction(alert.alert_id, 'resolve')}
-                    aria-label={`Resolve alert ${alert.alert_id}`}
-                  >
-                    {isPending ? (
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" />
-                    ) : (
-                      'Resolve'
-                    )}
-                  </button>
-                </div>
+                {actionError && (
+                  <div className="ev-error">{actionError}</div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="ev-actions">
+                <button
+                  className="btn-pnpg btn-warning-pnpg"
+                  style={{ padding: '4px 9px', fontSize: '0.7rem' }}
+                  disabled={isPending}
+                  onClick={() => handleAction(alert.alert_id, 'suppress')}
+                  aria-label={`Suppress alert ${alert.alert_id}`}
+                  title="Suppress"
+                >
+                  {isPending ? (
+                    <span className="spinner-xs" />
+                  ) : (
+                    <EyeOffIcon size={12} />
+                  )}
+                </button>
+
+                <button
+                  className="btn-pnpg btn-success-pnpg"
+                  style={{ padding: '4px 9px', fontSize: '0.7rem' }}
+                  disabled={isPending}
+                  onClick={() => handleAction(alert.alert_id, 'resolve')}
+                  aria-label={`Resolve alert ${alert.alert_id}`}
+                  title="Resolve"
+                >
+                  {isPending ? (
+                    <span className="spinner-xs" />
+                  ) : (
+                    <CheckIcon size={12} />
+                  )}
+                </button>
               </div>
             </div>
           </div>

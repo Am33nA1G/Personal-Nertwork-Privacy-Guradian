@@ -195,7 +195,7 @@ Response: { "data": { "status": "ok", "probe": string, "db": "ok"|"unavailable",
 | UI-02 | Alerts panel with severity color coding (WARNING=yellow, ALERT=orange, CRITICAL=red) | Alert object has `severity` field; Bootstrap badge/border-left color classes |
 | UI-03 | Recharts connections-per-app bar or donut chart | Derive from connection state; `process_name` → count aggregation in component |
 | UI-04 | Recharts connections-per-second rolling 60s window line chart | Maintain `useRef` circular buffer of `{ ts, count }` entries; trim entries older than 60s on each frame |
-| UI-05 | Capture status indicator: Active/Stopped + capture method | `GET /api/v1/status` polled every 5s; `probe_type` field available |
+| UI-05 | Capture status indicator: Active + capture method (no Stopped state from live API) | `GET /api/v1/status` polled every 5s; always returns `capture:"running"` while server is alive (`routes/status.py:24`); component has three states: loading/active/unreachable — "stopped" is not reachable from a live backend |
 | UI-06 | WebSocket delta updates — no full DOM re-render | `useRef` on rows array + `prepend` to table body DOM node; do NOT use `rows.map(...)` JSX re-render |
 | UI-07 | Pause/resume toggle halts live UI updates without disconnecting WebSocket | `isPaused` state ref; when paused, enqueue to a pending buffer; resume flushes buffer |
 | UI-08 | Alerts panel: Suppress and Resolve buttons per alert | `PATCH /api/v1/alerts/:id` with `{ action: "suppress" }` or `{ action: "resolve" }` |
@@ -507,7 +507,7 @@ Override Bootstrap CSS variables in `globals.css` for the security-tool aestheti
 - **Full table re-render on each WS push:** Using `connections.map((c) => <tr key={c.event_id}>...)` in JSX will cause the entire table to re-render 2x per second. Use DOM mutation (Pattern 3) for the live table.
 - **Storing WS instance in React state:** Causes infinite reconnect loops. Store in `useRef`.
 - **Calling API on every row render:** Severity color mapping must be pure/derived, not fetched.
-- **Forgetting the first-run setup wizard:** The backend requires `POST /api/v1/auth/setup` before login is possible (`needs_setup` flag). The frontend must check `GET /api/v1/health` first; if the login endpoint returns 503 "Run setup first", show the setup form (one-time password entry).
+- **Forgetting the first-run setup wizard:** The backend requires `POST /api/v1/auth/setup` before login is possible. Detection: `POST /api/v1/auth/login` returns HTTP 503 `{ detail: "Run setup first" }` when unconfigured. **Do NOT call `GET /api/v1/health` to detect this** — `/api/v1/health` does not expose a `needs_setup` flag (`routes/status.py:44-50`). Show the login form first; render the setup section only after receiving the 503 response.
 - **Using CDN Bootstrap:** CLAUDE.md requires npm import. CDN blocks Next.js SSR and FOUC.
 - **Tailwind defaults from create-next-app:** Use `--no-tailwind` flag; Tailwind conflicts with Bootstrap.
 
@@ -575,7 +575,7 @@ const ConnectionsPerApp = dynamic(
 
 **What goes wrong:** User opens dashboard, tries to log in, gets 503 "Run setup first" from the backend.
 **Why it happens:** The backend requires `POST /api/v1/auth/setup` to set the initial password before `POST /api/v1/auth/login` works.
-**How to avoid:** The login page must call `GET /api/v1/health` on mount; if health shows `db: "ok"` and login returns 503, render a "Set up your password" form that calls `POST /api/v1/auth/setup`.
+**How to avoid:** The login page renders a standard login form on first visit. On submit, if the response is HTTP 503 `{ detail: "Run setup first" }`, switch to the setup form (`POST /api/v1/auth/setup`). Do **not** call `GET /api/v1/health` to detect this state — health does not expose it.
 **Warning signs:** Login always fails with 503 on fresh install.
 
 ### Pitfall 7: CORS Errors with Direct Backend Calls

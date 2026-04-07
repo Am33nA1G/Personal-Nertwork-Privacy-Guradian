@@ -110,3 +110,26 @@ export async function apiStatus(token: string) {
   const res = await fetch(`${BASE_URL}/api/v1/status`, { headers: authHeaders(token) });
   return res.json();
 }
+
+export async function apiThreats(token: string, status?: string) {
+  const params = status ? `?status=${status}` : '';
+  const res = await fetch(`${BASE_URL}/api/v1/threats${params}`, {
+    headers: authHeaders(token),
+  });
+  return res.json();
+}
+
+export async function apiRemediateThreat(
+  token: string,
+  pid: number,
+  action: 'kill' | 'block_ip',
+  reason?: string
+) {
+  const endpoint = action === 'kill' ? 'kill' : 'block-ip';
+  const res = await fetch(`${BASE_URL}/api/v1/threats/${pid}/${endpoint}`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: JSON.stringify({ action, reason }),
+  });
+  return res.json();
+}
