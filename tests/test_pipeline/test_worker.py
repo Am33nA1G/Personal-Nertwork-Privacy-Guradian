@@ -278,3 +278,151 @@ async def test_enrichment_stages_wired():
         mock_dns.assert_awaited_once()
         mock_geo.assert_called_once_with(mock_dns.return_value)
         mock_threat.assert_called_once_with(mock_geo.return_value)
+
+
+@pytest.mark.asyncio
+async def test_worker_with_ndjson_writer():
+    """Phase 5: storage_writer is called when ndjson_writer is provided."""
+    queue = asyncio.Queue(maxsize=10)
+    await queue.put(_make_event(0))
+
+    config = _make_config()
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
+    ndjson_writer = mock.AsyncMock()
+
+    with mock.patch(
+        "pnpg.pipeline.worker.storage_writer", new_callable=mock.AsyncMock
+    ) as mock_storage:
+        worker_task = asyncio.create_task(
+            pipeline_worker(
+                queue,
+                config,
+                {},
+                dns_cache,
+                _make_detector_state(),
+                db_pool=None,
+                ndjson_writer=ndjson_writer,
+            )
+        )
+        try:
+            await asyncio.wait_for(queue.join(), timeout=2.0)
+        finally:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+
+    mock_storage.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_worker_with_ws_manager():
+    """Phase 5: ws_manager.broadcast is called for each event."""
+    queue = asyncio.Queue(maxsize=10)
+    await queue.put(_make_event(0))
+
+    config = _make_config()
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
+    ws_manager = mock.AsyncMock()
+
+    worker_task = asyncio.create_task(
+        pipeline_worker(
+            queue,
+            config,
+            {},
+            dns_cache,
+            _make_detector_state(),
+            db_pool=None,
+            ndjson_writer=None,
+            ws_manager=ws_manager,
+        )
+    )
+    try:
+        await asyncio.wait_for(queue.join(), timeout=2.0)
+    finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+
+    ws_manager.broadcast.assert_awaited_once()
+    call_payload = ws_manager.broadcast.await_args[0][0]
+    assert "connections" in call_payload
+    assert "alerts" in call_payload
+
+
+@pytest.mark.asyncio
+async def test_worker_ndjson_error_does_not_crash(caplog):
+    """storage_writer error is logged but worker continues without crashing."""
+    queue = asyncio.Queue(maxsize=10)
+    await queue.put(_make_event(0))
+    await queue.put(_make_event(1))
+
+    config = _make_config()
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
+    ndjson_writer = mock.AsyncMock()
+
+    with mock.patch(
+        "pnpg.pipeline.worker.storage_writer",
+        new_callable=mock.AsyncMock,
+        side_effect=Exception("storage boom"),
+    ):
+        worker_task = asyncio.create_task(
+            pipeline_worker(
+                queue,
+                config,
+                {},
+                dns_cache,
+                _make_detector_state(),
+                db_pool=None,
+                ndjson_writer=ndjson_writer,
+            )
+        )
+        try:
+            await asyncio.wait_for(queue.join(), timeout=2.0)
+        finally:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+
+    assert queue.empty()
+
+
+@pytest.mark.asyncio
+async def test_worker_ws_manager_error_does_not_crash():
+    """ws_manager.broadcast error is logged but worker continues."""
+    queue = asyncio.Queue(maxsize=10)
+    await queue.put(_make_event(0))
+    await queue.put(_make_event(1))
+
+    config = _make_config()
+    dns_cache = TtlLruCache(maxsize=10, ttl=60.0)
+    ws_manager = mock.AsyncMock()
+    ws_manager.broadcast.side_effect = RuntimeError("ws boom")
+
+    worker_task = asyncio.create_task(
+        pipeline_worker(
+            queue,
+            config,
+            {},
+            dns_cache,
+            _make_detector_state(),
+            db_pool=None,
+            ndjson_writer=None,
+            ws_manager=ws_manager,
+        )
+    )
+    try:
+        await asyncio.wait_for(queue.join(), timeout=2.0)
+    finally:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
+
+    assert queue.empty()

@@ -120,3 +120,113 @@ def test_enrich_geo_immutable():
         result = enrich_geo(event)
     assert "dst_country" not in event
     assert result["dst_country"] == "US"
+
+
+# ---------------------------------------------------------------------------
+# open_readers / close_readers
+# ---------------------------------------------------------------------------
+
+import pytest as _pytest
+import pnpg.pipeline.geo_enricher as _geo_mod
+
+
+@_pytest.fixture(autouse=False)
+def reset_geo_readers():
+    """Ensure geo_enricher module-level readers are None before and after each test."""
+    _geo_mod._country_reader = None
+    _geo_mod._asn_reader = None
+    yield
+    _geo_mod._country_reader = None
+    _geo_mod._asn_reader = None
+
+
+def test_open_readers_both_success(reset_geo_readers):
+    """open_readers sets both _country_reader and _asn_reader when files exist."""
+    import geoip2.database
+    from pnpg.pipeline.geo_enricher import open_readers
+    from unittest.mock import MagicMock, patch
+
+    mock_reader = MagicMock(spec=geoip2.database.Reader)
+
+    with patch("geoip2.database.Reader", return_value=mock_reader):
+        open_readers("fake_country.mmdb", "fake_asn.mmdb")
+
+    assert _geo_mod._country_reader is mock_reader
+    assert _geo_mod._asn_reader is mock_reader
+
+
+def test_open_readers_country_missing(caplog, reset_geo_readers):
+    """open_readers logs a warning and sets _country_reader=None when country file is absent."""
+    import geoip2.database
+    from pnpg.pipeline.geo_enricher import open_readers
+    from unittest.mock import MagicMock, patch
+
+    mock_asn_reader = MagicMock(spec=geoip2.database.Reader)
+
+    def reader_factory(path, mode=None):
+        if "country" in path.lower():
+            raise FileNotFoundError(path)
+        return mock_asn_reader
+
+    with patch("geoip2.database.Reader", side_effect=reader_factory):
+        with caplog.at_level("WARNING"):
+            open_readers("missing_country.mmdb", "fake_asn.mmdb")
+
+    assert _geo_mod._country_reader is None
+    assert _geo_mod._asn_reader is mock_asn_reader
+    assert "Country" in caplog.text or "country" in caplog.text
+
+
+def test_open_readers_asn_missing(caplog, reset_geo_readers):
+    """open_readers logs a warning and sets _asn_reader=None when ASN file is absent."""
+    import geoip2.database
+    from pnpg.pipeline.geo_enricher import open_readers
+    from unittest.mock import MagicMock, patch
+
+    mock_country_reader = MagicMock(spec=geoip2.database.Reader)
+
+    def reader_factory(path, mode=None):
+        if "asn" in path.lower():
+            raise FileNotFoundError(path)
+        return mock_country_reader
+
+    with patch("geoip2.database.Reader", side_effect=reader_factory):
+        with caplog.at_level("WARNING"):
+            open_readers("fake_country.mmdb", "missing_asn.mmdb")
+
+    assert _geo_mod._country_reader is mock_country_reader
+    assert _geo_mod._asn_reader is None
+    assert "ASN" in caplog.text or "asn" in caplog.text
+
+
+def test_close_readers_resets_globals():
+    """close_readers calls close() on open readers and sets both to None."""
+    import geoip2.database
+    from pnpg.pipeline.geo_enricher import close_readers
+    from unittest.mock import MagicMock
+
+    mock_country = MagicMock(spec=geoip2.database.Reader)
+    mock_asn = MagicMock(spec=geoip2.database.Reader)
+
+    _geo_mod._country_reader = mock_country
+    _geo_mod._asn_reader = mock_asn
+
+    close_readers()
+
+    mock_country.close.assert_called_once()
+    mock_asn.close.assert_called_once()
+    assert _geo_mod._country_reader is None
+    assert _geo_mod._asn_reader is None
+
+
+def test_close_readers_when_already_none():
+    """close_readers is safe to call when readers are already None."""
+    from pnpg.pipeline.geo_enricher import close_readers
+
+    _geo_mod._country_reader = None
+    _geo_mod._asn_reader = None
+
+    close_readers()  # Must not raise
+
+    assert _geo_mod._country_reader is None
+    assert _geo_mod._asn_reader is None

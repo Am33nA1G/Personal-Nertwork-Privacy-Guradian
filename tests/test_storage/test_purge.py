@@ -51,3 +51,34 @@ def test_log_metrics_logs_info():
 
     assert mock_logger.info.called
     assert "OBS-04 metrics" in mock_logger.info.call_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_setup_scheduler_creates_scheduler():
+    """setup_scheduler returns a running AsyncIOScheduler with two jobs."""
+    from pnpg.scheduler import setup_scheduler
+
+    pool = mock.AsyncMock()
+
+    scheduler = setup_scheduler(pool, {"purge_schedule_hour": 3}, drop_counter=[0])
+
+    try:
+        jobs = scheduler.get_jobs()
+        job_ids = {job.id for job in jobs}
+        assert "nightly-purge" in job_ids
+        assert "obs-04-metrics" in job_ids
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+@pytest.mark.asyncio
+async def test_setup_scheduler_pool_none_noop():
+    """setup_scheduler works fine when db_pool is None."""
+    from pnpg.scheduler import setup_scheduler
+
+    scheduler = setup_scheduler(None, {}, drop_counter=[0])
+
+    try:
+        assert scheduler is not None
+    finally:
+        scheduler.shutdown(wait=False)

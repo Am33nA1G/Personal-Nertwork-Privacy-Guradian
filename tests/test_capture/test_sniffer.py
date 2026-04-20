@@ -146,3 +146,85 @@ async def test_supervisor_graceful_stop():
     # Supervisor checks stop_event at the top of the loop, so it should exit immediately
     # without calling start_sniffer at all (or at most once if it checks after starting)
     assert call_count[0] <= 1, f"Expected at most 1 start_sniffer call when stop_event is set, got {call_count[0]}"
+
+
+# ---------------------------------------------------------------------------
+# _sniffer_target and start_sniffer
+# ---------------------------------------------------------------------------
+
+
+def _make_scapy_import_patcher(sniff_mock=None):
+    """Return a (fake_import, sniff_mock) pair for stubbing out scapy.all imports."""
+    if sniff_mock is None:
+        sniff_mock = mock.MagicMock()
+
+    def fake_import(name, *args, **kwargs):
+        if name == "scapy.all":
+            scapy_mod = mock.MagicMock()
+            scapy_mod.sniff = sniff_mock
+            return scapy_mod
+        return __import__(name, *args, **kwargs)
+
+    return fake_import, sniff_mock
+
+
+def test_sniffer_target_calls_sniff():
+    """_sniffer_target calls scapy sniff with the expected arguments."""
+    import threading
+    from pnpg.capture.sniffer import _sniffer_target
+
+    stop_event = threading.Event()
+    stop_event.set()  # Immediately stop
+
+    packet_handler = mock.MagicMock()
+    fake_import, mock_sniff = _make_scapy_import_patcher()
+
+    with mock.patch("builtins.__import__", side_effect=fake_import):
+        _sniffer_target("eth0", packet_handler, stop_event)
+
+    mock_sniff.assert_called_once()
+    call_kwargs = mock_sniff.call_args[1]
+    assert call_kwargs["iface"] == "eth0"
+    assert call_kwargs["prn"] is packet_handler
+    assert call_kwargs["store"] is False
+
+
+def test_sniffer_target_handles_exception(caplog):
+    """_sniffer_target catches exceptions and logs them at CRITICAL level."""
+    import threading
+    import logging
+    from pnpg.capture.sniffer import _sniffer_target
+
+    stop_event = threading.Event()
+    packet_handler = lambda p: None
+
+    def fake_import_raise(name, *args, **kwargs):
+        if name == "scapy.all":
+            raise RuntimeError("Scapy not available")
+        return __import__(name, *args, **kwargs)
+
+    with mock.patch("builtins.__import__", side_effect=fake_import_raise):
+        with caplog.at_level(logging.CRITICAL, logger="pnpg.capture.sniffer"):
+            _sniffer_target("eth0", packet_handler, stop_event)
+
+    assert any("Sniffer thread died" in r.message for r in caplog.records)
+
+
+def test_start_sniffer_returns_daemon_thread():
+    """start_sniffer returns a started daemon thread named pnpg-sniffer."""
+    import threading
+    from pnpg.capture.sniffer import start_sniffer
+
+    stop_event = threading.Event()
+    stop_event.set()  # Stop immediately so _sniffer_target returns quickly
+    packet_handler = mock.MagicMock()
+
+    fake_import, _ = _make_scapy_import_patcher()
+
+    with mock.patch("builtins.__import__", side_effect=fake_import):
+        thread = start_sniffer("eth0", packet_handler, stop_event)
+
+    assert isinstance(thread, threading.Thread)
+    assert thread.daemon is True
+    assert thread.name == "pnpg-sniffer"
+    thread.join(timeout=1.0)

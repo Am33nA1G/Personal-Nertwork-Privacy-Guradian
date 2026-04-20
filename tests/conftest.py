@@ -1,8 +1,16 @@
 """Shared pytest fixtures for PNPG test suite."""
 import os
+import sys
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+
+# Provide a stub winreg module on non-Windows platforms so that
+# pnpg.prereqs (and modules importing it) can be loaded in the Linux CI.
+if "winreg" not in sys.modules:
+    _winreg_stub = MagicMock()
+    _winreg_stub.HKEY_LOCAL_MACHINE = 0x80000002
+    sys.modules["winreg"] = _winreg_stub
 
 
 @pytest.fixture
